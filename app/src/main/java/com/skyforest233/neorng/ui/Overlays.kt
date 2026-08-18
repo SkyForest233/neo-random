@@ -208,7 +208,7 @@ fun rememberNoiseBrush(): androidx.compose.ui.graphics.Brush? {
             }
             bmp.setPixels(pixels, 0, size, 0, 0, size, size)
             val image: ImageBitmap = bmp.asImageBitmap()
-            androidx.compose.ui.graphics.Brush.bitmapBrush(image)
+            androidx.compose.ui.graphics.BitmapBrush(image)
         }.getOrNull()
     }
 }

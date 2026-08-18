@@ -137,12 +137,11 @@ fun ActionButton(
         pressedTranslate = true,
         contentAlignment = Alignment.Center
     ) {
-        Text(
+        NeoText(
             text = text,
-            fontFamily = NeoSans,
-            fontWeight = FontWeight.W900,
-            fontSize = fontSize,
             color = textColor,
+            fontSize = fontSize,
+            fontWeight = FontWeight.W900,
             modifier = Modifier.padding(vertical = 16.dp)
         )
     }
@@ -286,7 +285,7 @@ fun NeoTextField(
         if (focused) {
             Box(
                 Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .padding(start = 3.dp, top = 3.dp)
                     .background(palette.shadow, shape)
             )

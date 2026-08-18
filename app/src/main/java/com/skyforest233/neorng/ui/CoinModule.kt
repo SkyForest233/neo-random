@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -137,30 +136,37 @@ private fun CoinScene(app: AppState, palette: NeoPalette, modifier: Modifier = M
                 indication = null
             ) { app.executeCoinFlip() }
             .graphicsLayer {
-                rotationY = coin.angle
                 translationY = coin.y.dp.toPx()
                 rotationX = coin.rx
             },
         contentAlignment = Alignment.Center
     ) {
-        // 厚度层（.coin-edge-layer x14）
+        // 厚度层（.coin-edge-layer x14）：用 x = i·sinθ 投影模拟 translateZ 的扇形厚度
+        val sinA = kotlin.math.sin(Math.toRadians(coin.angle.toDouble())).toFloat()
         for (i in -7..7) {
             if (i == 0) continue
             Box(
                 Modifier
                     .matchParentSize()
-                    .graphicsLayer { translationZ = i.dp.toPx() }
+                    .graphicsLayer { translationX = i.dp.toPx() * sinA }
                     .coinFaceBackground(palette, accent = false)
             )
         }
-        // 当前朝向的面（背面预旋转 180° 保证文字不镜像）
+        // 旋转中的硬币面（透视 rotateY）
         Box(
             Modifier
                 .matchParentSize()
-                .graphicsLayer { rotationY = if (showBack) 180f else 0f }
-                .coinFaceBackground(palette, accent = showBack),
+                .graphicsLayer { rotationY = coin.angle },
             contentAlignment = Alignment.Center
         ) {
+            // 当前朝向的面（背面预旋转 180° 保证文字不镜像）
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer { rotationY = if (showBack) 180f else 0f }
+                    .coinFaceBackground(palette, accent = showBack),
+                contentAlignment = Alignment.Center
+            ) {
             val faceText = if (showBack) app.coinTail else app.coinHead
             val faceColor = if (showBack) palette.btnText else palette.textMain
             androidx.compose.foundation.text.BasicText(
@@ -176,6 +182,7 @@ private fun CoinScene(app: AppState, palette: NeoPalette, modifier: Modifier = M
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(10.dp)
             )
+            }
         }
     }
 }
