@@ -1,0 +1,190 @@
+package com.skyforest233.neorng
+
+import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+
+/**
+ * 效果回调接口：动画引擎完成物理步进时触发声音/触感/纸屑/历史记录等副作用，
+ * 与网页版 renderLoop 中直接调用的 playSound / fireConfetti / addHistory 对应。
+ */
+interface Fx {
+    fun sound(name: String)
+    fun vibrate(pattern: LongArray)
+    fun toast(msg: String)
+    fun confetti()
+    fun emergency(on: Boolean)
+    fun addHistory(type: String, result: String, onDone: (() -> Unit)? = null)
+    fun runDelayed(ms: Long, action: () -> Unit)
+}
+
+enum class AnimState { IDLE, SPINNING, STOPPING }
+
+/**
+ * 硬币物理：完整移植网页版 animEngine.coin 的逐帧行为
+ * （加速旋转、上抛、每 180° 播放 swoosh、弹簧减速、EDGE 竖立倾斜 -25°）。
+ */
+class CoinAnim(private val fx: Fx) {
+    var state = AnimState.IDLE
+    var angle = 0f
+    var y = 0f
+    var rx = 0f
+    var speed = 0f
+    var target = 0f
+    private var lastSwooshAngle = 0f
+    var isEdge = false
+    var resultText = ""
+    var buttonEnabled = true
+
+    fun launchSpin(resultIsEdge: Boolean, text: String, finalTarget: Float) {
+        resultText = text
+        isEdge = resultIsEdge
+        target = finalTarget
+        state = AnimState.STOPPING
+    }
+
+    fun beginSpin() {
+        buttonEnabled = false
+        state = AnimState.SPINNING
+        lastSwooshAngle = angle
+    }
+
+    /** 单帧步进（与 JS renderLoop 中 Coin 分支逐行对应）。返回是否仍在活动。 */
+    fun stepOnce() {
+        if (state == AnimState.IDLE && abs(rx) <= 0.5f) return
+
+        if (state == AnimState.SPINNING) {
+            speed = min(speed + 1.5f, 40f)
+            angle += speed
+            y = max(y - 4f, -80f)
+            if (angle - lastSwooshAngle >= 180f) {
+                fx.sound("swoosh")
+                lastSwooshAngle += 180f
+            }
+        } else if (state == AnimState.STOPPING) {
+            val diff = target - angle
+            y = min(y + 4f, 0f)
+            if (diff > 20f) {
+                speed = max(diff * 0.04f, 2f)
+                angle += speed
+            } else {
+                speed += diff * 0.2f
+                speed *= 0.75f
+                angle += speed
+                if (abs(diff) < 0.1f && abs(speed) < 0.1f && y == 0f) {
+                    angle = target
+                    state = AnimState.IDLE
+                    if (isEdge) {
+                        fx.sound("siren")
+                        fx.emergency(true)
+                        fx.runDelayed(3000) { fx.emergency(false) }
+                    } else {
+                        fx.sound("ding")
+                        fx.confetti()
+                    }
+                    buttonEnabled = true
+                    fx.addHistory("COIN FLIP", resultText)
+                }
+            }
+        }
+
+        val targetRx = if (isEdge && state == AnimState.IDLE) -25f else 0f
+        rx += (targetRx - rx) * 0.1f
+        if (abs(targetRx - rx) < 0.5f) rx = targetRx
+    }
+
+    val isActive: Boolean get() = state != AnimState.IDLE || abs(rx) > 0.5f
+}
+
+data class WheelItem(val text: String, val weight: Int)
+
+/**
+ * 转盘物理：移植 animEngine.wheel —— 匀加速、按权重角度缓停、
+ * 指针跨越扇区边界播放 tick、停止后弹出结果印章。
+ */
+class WheelAnim(private val fx: Fx) {
+    var state = AnimState.IDLE
+    var angle = 0f
+    var speed = 0f
+    var target = 0f
+    var resultText = ""
+    var buttonEnabled = true
+    var stampVisible = false
+    private var lastTickIdx = -1
+
+    /** 停止后由外部（转盘模块）指定是否自动剔除中奖项 */
+    var autoRemoveWinner = false
+
+    fun beginSpin() {
+        buttonEnabled = false
+        state = AnimState.SPINNING
+        stampVisible = false
+    }
+
+    fun launchStop(text: String, finalTarget: Float) {
+        resultText = text
+        target = finalTarget
+        state = AnimState.STOPPING
+    }
+
+    fun stepOnce(items: List<WheelItem>) {
+        if (state == AnimState.IDLE) return
+
+        if (state == AnimState.SPINNING) {
+            speed = min(speed + 0.4f, 25f)
+            angle += speed
+        } else if (state == AnimState.STOPPING) {
+            val diff = target - angle
+            if (diff > 15f) {
+                speed = max(diff * 0.025f, 2.5f)
+                angle += speed
+            } else {
+                speed += diff * 0.15f
+                speed *= 0.82f
+                angle += speed
+                if (abs(diff) < 0.1f && abs(speed) < 0.1f) {
+                    angle = target
+                    state = AnimState.IDLE
+                    fx.sound("ding")
+                    fx.confetti()
+                    buttonEnabled = true
+                    stampVisible = true
+                    val winner = resultText
+                    val shouldRemove = autoRemoveWinner
+                    fx.runDelayed(4000) { stampVisible = false }
+                    fx.addHistory("SPIN WHEEL", winner) {
+                        if (shouldRemove) fx.runDelayed(400) { onWheelWinnerAutoRemove(winner) }
+                    }
+                }
+            }
+        }
+
+        // 指针跨越扇区时 tick（对应网页版按 pointerCanvasAngle 计算当前扇区）
+        if (items.isNotEmpty()) {
+            val totalWeight = items.sumOf { it.weight }.toFloat()
+            if (totalWeight > 0f) {
+                val pointerCanvasAngle = ((360f - (angle % 360f)) % 360f + 360f) % 360f
+                var currAng = 0f
+                var currentIdx = 0
+                for (i in items.indices) {
+                    val span = items[i].weight / totalWeight * 360f
+                    if (pointerCanvasAngle >= currAng && pointerCanvasAngle < currAng + span) {
+                        currentIdx = i
+                        break
+                    }
+                    currAng += span
+                }
+                if (lastTickIdx != currentIdx) {
+                    fx.sound("tick")
+                    lastTickIdx = currentIdx
+                }
+            }
+        }
+    }
+
+    /** 由 AppState 提供的钩子：抽中剔除 */
+    var onWheelWinnerAutoRemove: (String) -> Unit = {}
+
+    fun baseAngle(): Float = floor(angle / 360f) * 360f
+}
