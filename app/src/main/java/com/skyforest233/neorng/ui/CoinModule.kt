@@ -183,18 +183,19 @@ private fun DrawScope.drawCoin3D(
     val pillLeft = minOf(nearX, farX) - nearRx
     val pillRight = maxOf(nearX, farX) + nearRx
 
-    // 1) 侧边带（胶囊形，card 底色 + 描边）
+    // 1) 侧边带（圆柱外轮廓：x 向圆角 R·cosθ、y 向圆角 R —— 正确的椭圆端帽，不会出现方形）
+    val pillRadius = CornerRadius(nearRx.coerceAtLeast(0.5f), R)
     drawRoundRect(
         color = palette.card,
         topLeft = Offset(pillLeft, cy - R),
         size = Size(pillRight - pillLeft, R * 2f),
-        cornerRadius = CornerRadius(R, R)
+        cornerRadius = pillRadius
     )
     drawRoundRect(
         color = palette.border,
         topLeft = Offset(pillLeft, cy - R),
         size = Size(pillRight - pillLeft, R * 2f),
-        cornerRadius = CornerRadius(R, R),
+        cornerRadius = pillRadius,
         style = Stroke(2.5f.dp.toPx())
     )
 

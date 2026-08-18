@@ -1,16 +1,16 @@
 package com.skyforest233.neorng.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,10 +29,11 @@ import com.skyforest233.neorng.NeoPalette
 /**
  * 🔢 数字生成器：MIN/MAX/COUNT 输入、绝对唯一开关、
  * 结果药丸逐个弹出（popIn 回弹动画 + tabular-nums 等宽数字）。
+ * 排版：手机上 MIN/MAX 一行两列，COUNT 与唯一开关同行，避免标签挤压。
  */
 @Composable
 fun RngModule(app: AppState, palette: NeoPalette) {
-    var reportedZero by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var reportedZero by remember { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
@@ -42,13 +43,15 @@ fun RngModule(app: AppState, palette: NeoPalette) {
                     reportedZero = true
                     app.toast("诊断: RNG面板尺寸异常 ${coords.size.width}x${coords.size.height}")
                 }
-            }
+            },
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // 第一行：MIN / MAX
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(15.dp)
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NeoText("MIN", color = palette.textMain, fontSize = 13.sp, fontWeight = FontWeight.W900)
@@ -68,8 +71,19 @@ fun RngModule(app: AppState, palette: NeoPalette) {
                     numeric = true
                 )
             }
+        }
+
+        // 第二行：COUNT（带 MAX 200 徽章）+ 绝对唯一开关
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     NeoText("COUNT", color = palette.textMain, fontSize = 13.sp, fontWeight = FontWeight.W900)
                     SmallBadge("MAX 200", palette)
                 }
@@ -80,47 +94,37 @@ fun RngModule(app: AppState, palette: NeoPalette) {
                     numeric = true
                 )
             }
-        }
-
-        // 绝对唯一开关右对齐
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BrutalCheckbox(
-                label = "绝对唯一 (Unique)",
-                checked = app.rngUnique,
-                palette = palette,
-                onCheckedChange = {
-                    app.rngUnique = it
-                    app.saveData()
-                }
-            )
+            Column(Modifier.padding(bottom = 14.dp)) {
+                BrutalCheckbox(
+                    label = "绝对唯一 (Unique)",
+                    checked = app.rngUnique,
+                    palette = palette,
+                    onCheckedChange = {
+                        app.rngUnique = it
+                        app.saveData()
+                    }
+                )
+            }
         }
 
         ActionButton(
             text = "GENERATE NUMBERS",
             enabled = app.rngButtonEnabled,
             palette = palette,
-            modifier = Modifier.padding(top = 20.dp)
+            modifier = Modifier.padding(top = 12.dp)
         ) { app.executeRng() }
 
-        // 结果药丸（.rng-number，popIn 逐个出现）—— 每行 4 个手动换行，稳定可靠
+        // 结果药丸（.rng-number，popIn 逐个出现）：每行最多 3 个，宽度自适应不省略
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp),
+                .padding(top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            app.rngResults.chunked(4).forEach { rowNums ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            app.rngResults.chunked(3).forEach { rowNums ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     rowNums.forEach { num ->
-                        Box(Modifier.weight(1f)) {
-                            PopInPill(num.toString(), palette)
-                        }
-                    }
-                    repeat(4 - rowNums.size) {
-                        Box(Modifier.weight(1f))
+                        PopInPill(num.toString(), palette)
                     }
                 }
             }
@@ -128,10 +132,10 @@ fun RngModule(app: AppState, palette: NeoPalette) {
     }
 }
 
-/** 单个结果药丸：cubic-bezier 回弹式 popIn 动画（Animatable 驱动，稳定可靠） */
+/** 单个结果药丸：cubic-bezier 回弹式 popIn 动画（Animatable 驱动，宽度自适应） */
 @Composable
 private fun PopInPill(text: String, palette: NeoPalette) {
-    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         progress.animateTo(1f, tween(300, easing = NeoOvershootEasing))
     }

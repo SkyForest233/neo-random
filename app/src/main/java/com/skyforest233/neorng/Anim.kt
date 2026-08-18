@@ -40,17 +40,20 @@ class CoinAnim(private val fx: Fx) {
     var isEdge = false
     var resultText by mutableStateOf("")
     var buttonEnabled by mutableStateOf(true)
+    /** 结果已就绪，等加速完成后进入停止阶段（保证每次手感一致） */
+    private var armedStop = false
 
     fun launchSpin(resultIsEdge: Boolean, text: String, finalTarget: Float) {
         resultText = text
         isEdge = resultIsEdge
         target = finalTarget
-        state = AnimState.STOPPING
+        armedStop = true
     }
 
     fun beginSpin() {
         buttonEnabled = false
         state = AnimState.SPINNING
+        armedStop = false
         lastSwooshAngle = angle
     }
 
@@ -66,6 +69,11 @@ class CoinAnim(private val fx: Fx) {
                 fx.sound("swoosh")
                 lastSwooshAngle += 180f
             }
+            // 加速到峰值后才允许进入停止阶段（与网络返回时机解耦）
+            if (armedStop && speed >= 40f) {
+                state = AnimState.STOPPING
+                armedStop = false
+            }
         } else if (state == AnimState.STOPPING) {
             val diff = target - angle
             y = min(y + 4f, 0f)
@@ -77,7 +85,7 @@ class CoinAnim(private val fx: Fx) {
                 speed += diff * 0.2f
                 speed *= 0.75f
                 angle += speed
-                if (abs(diff) < 0.1f && abs(speed) < 0.1f && y == 0f) {
+                if (abs(diff) < 1.5f && abs(speed) < 1.5f && y == 0f) {
                     angle = target
                     state = AnimState.IDLE
                     if (isEdge) {
@@ -117,6 +125,7 @@ class WheelAnim(private val fx: Fx) {
     var buttonEnabled by mutableStateOf(true)
     var stampVisible by mutableStateOf(false)
     private var lastTickIdx = -1
+    private var armedStop = false
 
     /** 停止后由外部（转盘模块）指定是否自动剔除中奖项 */
     var autoRemoveWinner = false
@@ -124,13 +133,14 @@ class WheelAnim(private val fx: Fx) {
     fun beginSpin() {
         buttonEnabled = false
         state = AnimState.SPINNING
+        armedStop = false
         stampVisible = false
     }
 
     fun launchStop(text: String, finalTarget: Float) {
         resultText = text
         target = finalTarget
-        state = AnimState.STOPPING
+        armedStop = true
     }
 
     fun stepOnce(items: List<WheelItem>) {
@@ -139,6 +149,11 @@ class WheelAnim(private val fx: Fx) {
         if (state == AnimState.SPINNING) {
             speed = min(speed + 0.4f, 25f)
             angle += speed
+            // 转到峰值速度后才进入停止阶段，确保每次都是"起转-匀速-滑行-停下"
+            if (armedStop && speed >= 25f) {
+                state = AnimState.STOPPING
+                armedStop = false
+            }
         } else if (state == AnimState.STOPPING) {
             val diff = target - angle
             if (diff > 15f) {
@@ -149,7 +164,7 @@ class WheelAnim(private val fx: Fx) {
                 speed += diff * 0.15f
                 speed *= 0.82f
                 angle += speed
-                if (abs(diff) < 0.1f && abs(speed) < 0.1f) {
+                if (abs(diff) < 1.2f && abs(speed) < 1.2f) {
                     angle = target
                     state = AnimState.IDLE
                     fx.sound("ding")

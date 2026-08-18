@@ -292,7 +292,7 @@ private fun MainContent(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 TabButton("🪙 Coin", 0, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(0) }
-                TabButton("🔢 Generator", 1, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(1) }
+                TabButton("🔢 Number", 1, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(1) }
                 TabButton("🎡 Wheel", 2, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(2) }
             }
         }
