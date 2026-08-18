@@ -141,16 +141,18 @@ private fun CenterSpinButton(app: AppState, palette: NeoPalette, modifier: Modif
                 enabled = app.wheel.buttonEnabled
             ) { app.executeWheel() }
             .drawBehind {
+                val c = Offset(size.width / 2f, size.height / 2f)
+                val r = (size.minDimension - if (pressed) 0f else 6.dp.toPx()) / 2f
                 if (!pressed) {
+                    // 硬阴影 = 同尺寸圆向右下偏移 3dp（此前圆心算错画在了左上角）
                     drawCircle(
                         color = palette.shadow,
-                        radius = (size.minDimension - 6.dp.toPx()) / 2f,
-                        center = Offset(3.dp.toPx(), 3.dp.toPx())
+                        radius = r,
+                        center = c + Offset(3.dp.toPx(), 3.dp.toPx())
                     )
                 }
-                val r = (size.minDimension - if (pressed) 0f else 6.dp.toPx()) / 2f
-                drawCircle(color = palette.card, radius = r)
-                drawCircle(color = palette.border, radius = r, style = Stroke(2.5.dp.toPx()))
+                drawCircle(color = palette.card, radius = r, center = c)
+                drawCircle(color = palette.border, radius = r, center = c, style = Stroke(2.5.dp.toPx()))
             },
         contentAlignment = Alignment.Center
     ) {

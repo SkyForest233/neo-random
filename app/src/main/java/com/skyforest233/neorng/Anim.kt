@@ -1,5 +1,8 @@
 package com.skyforest233.neorng
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -26,16 +29,17 @@ enum class AnimState { IDLE, SPINNING, STOPPING }
  * （加速旋转、上抛、每 180° 播放 swoosh、弹簧减速、EDGE 竖立倾斜 -25°）。
  */
 class CoinAnim(private val fx: Fx) {
-    var state = AnimState.IDLE
-    var angle = 0f
-    var y = 0f
-    var rx = 0f
+    // UI 读取的字段必须是 Compose 状态，否则动画数值变化不会触发重绘
+    var state by mutableStateOf(AnimState.IDLE)
+    var angle by mutableStateOf(0f)
+    var y by mutableStateOf(0f)
+    var rx by mutableStateOf(0f)
     var speed = 0f
     var target = 0f
     private var lastSwooshAngle = 0f
     var isEdge = false
-    var resultText = ""
-    var buttonEnabled = true
+    var resultText by mutableStateOf("")
+    var buttonEnabled by mutableStateOf(true)
 
     fun launchSpin(resultIsEdge: Boolean, text: String, finalTarget: Float) {
         resultText = text
@@ -104,13 +108,13 @@ data class WheelItem(val text: String, val weight: Int)
  * 指针跨越扇区边界播放 tick、停止后弹出结果印章。
  */
 class WheelAnim(private val fx: Fx) {
-    var state = AnimState.IDLE
-    var angle = 0f
+    var state by mutableStateOf(AnimState.IDLE)
+    var angle by mutableStateOf(0f)
     var speed = 0f
     var target = 0f
-    var resultText = ""
-    var buttonEnabled = true
-    var stampVisible = false
+    var resultText by mutableStateOf("")
+    var buttonEnabled by mutableStateOf(true)
+    var stampVisible by mutableStateOf(false)
     private var lastTickIdx = -1
 
     /** 停止后由外部（转盘模块）指定是否自动剔除中奖项 */

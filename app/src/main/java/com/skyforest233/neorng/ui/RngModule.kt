@@ -1,9 +1,6 @@
 package com.skyforest233.neorng.ui
 
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,37 +105,37 @@ fun RngModule(app: AppState, palette: NeoPalette) {
     }
 }
 
-/** 单个结果药丸：cubic-bezier 回弹式 popIn 动画 */
+/** 单个结果药丸：cubic-bezier 回弹式 popIn 动画（Animatable 驱动，稳定可靠） */
 @Composable
 private fun PopInPill(text: String, palette: NeoPalette) {
-    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
-    androidx.compose.animation.AnimatedVisibility(
-        visibleState = visibleState,
-        enter = scaleIn(
-            animationSpec = tween(300, easing = NeoOvershootEasing),
-            initialScale = 0f
-        ) + fadeIn(animationSpec = tween(300))
-    ) {
-        NeoSurface(
-            palette = palette,
-            radius = 100.dp,
-            borderWidth = 2.5.dp,
-            shadowDx = 2.dp,
-            shadowDy = 2.dp
-        ) {
-            androidx.compose.foundation.text.BasicText(
-                text = text,
-                style = TextStyle(
-                    color = palette.textMain,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.W900,
-                    fontFamily = NeoMono,
-                    fontFeatureSettings = "tnum"
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-            )
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, tween(300, easing = NeoOvershootEasing))
+    }
+    NeoSurface(
+        palette = palette,
+        radius = 100.dp,
+        borderWidth = 2.5.dp,
+        shadowDx = 2.dp,
+        shadowDy = 2.dp,
+        modifier = Modifier.graphicsLayer {
+            scaleX = progress.value
+            scaleY = progress.value
+            alpha = progress.value
         }
+    ) {
+        androidx.compose.foundation.text.BasicText(
+            text = text,
+            style = TextStyle(
+                color = palette.textMain,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W900,
+                fontFamily = NeoMono,
+                fontFeatureSettings = "tnum"
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+        )
     }
 }
