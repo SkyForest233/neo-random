@@ -245,4 +245,28 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
-exec "$JAVACMD" "$@"
+# --- CI diagnostics: surface compile errors as GitHub Actions annotations ---
+if [ -n "$GITHUB_ACTIONS" ]; then
+    TMPLOG=$(mktemp)
+    set +e
+    "$JAVACMD" "$@" 2>&1 | tee "$TMPLOG"
+    EXIT_CODE=${PIPESTATUS[0]}
+    set -e
+    if [ "$EXIT_CODE" -ne 0 ]; then
+        grep -E "^[^ ]*error: |^e: |Unresolved reference|Caused by:|Execution failed for task" "$TMPLOG" \
+            | head -40 \
+            | while IFS= read -r line; do
+                printf '::error::%s\n' "$(printf '%s' "$line" | sed 's/[",]//g' | cut -c1-240)"
+              done
+        # 再兜底输出一段尾部日志作为多行错误
+        echo "::group::build log tail"
+        tail -60 "$TMPLOG"
+        echo "::endgroup::"
+        rm -f "$TMPLOG"
+        exit $EXIT_CODE
+    fi
+    rm -f "$TMPLOG"
+    exit 0
+else
+    exec "$JAVACMD" "$@"
+fi
