@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -193,14 +192,14 @@ private fun ReceiptFront(app: AppState, palette: NeoPalette) {
                 dashedColor = palette.textMuted
             )
 
-            LazyColumn(
+            Column(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(15.dp)
             ) {
-                items(app.history.size) { idx ->
-                    HistoryEntry(app.history[idx], palette)
+                app.history.forEach { item ->
+                    HistoryEntry(item, palette)
                 }
             }
 

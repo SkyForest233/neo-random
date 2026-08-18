@@ -289,16 +289,10 @@ private fun MainContent(app: AppState, palette: NeoPalette, pagerState: PagerSta
             modifier = Modifier.fillMaxWidth(),
             beyondBoundsPageCount = 2
         ) { page ->
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(palette.card)
-            ) {
-                when (page) {
-                    0 -> FadeInCard(palette) { CoinModule(app, palette) }
-                    1 -> FadeInCard(palette) { RngModule(app, palette) }
-                    else -> FadeInCard(palette) { WheelModule(app, palette) }
-                }
+            when (page) {
+                0 -> FadeInCard(palette) { CoinModule(app, palette) }
+                1 -> FadeInCard(palette) { RngModule(app, palette) }
+                else -> FadeInCard(palette) { WheelModule(app, palette) }
             }
         }
     }
