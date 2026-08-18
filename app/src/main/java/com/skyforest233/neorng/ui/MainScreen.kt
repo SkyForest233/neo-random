@@ -74,7 +74,7 @@ fun MainScreen(app: AppState) {
     val palette = paletteFor(app.theme, app.dark)
     val pagerState = rememberPagerState(initialPage = 0) { 3 }
     val scope = rememberCoroutineScope()
-    val noiseBrush = rememberNoiseBrush()
+    val noiseBitmap = rememberNoiseBitmap()
 
     // 红色警报（EDGE 竖立）：背景红黑交替闪烁 3 秒
     val emergencyBg by animateColorAsState(
@@ -118,6 +118,7 @@ fun MainScreen(app: AppState) {
         Modifier
             .fillMaxSize()
             .background(baseBg)
+            .applyNoiseOverlay(noiseBitmap, palette)
             .onPreviewKeyEvent { event ->
                 // 网页版空格快捷键：触发当前 Tab 的动作（输入框聚焦时除外）
                 if (event.type == KeyEventType.KeyDown &&
@@ -179,27 +180,6 @@ fun MainScreen(app: AppState) {
                     }
                 }
             }
-        }
-
-        // 噪点纹理覆盖层（body::after）
-        if (noiseBrush != null) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = noiseBrush,
-                            alpha = if (palette.isDark) 0.08f else 0.05f,
-                            blendMode = if (palette.isDark) {
-                                androidx.compose.ui.graphics.BlendMode.Overlay
-                            } else {
-                                androidx.compose.ui.graphics.BlendMode.Multiply
-                            }
-                        )
-                    }
-            )
         }
 
         ToastHost(visible = app.toastMsg != null, message = app.toastMsg, palette = palette)
@@ -307,7 +287,7 @@ private fun MainContent(app: AppState, palette: NeoPalette, pagerState: PagerSta
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
-            beyondViewportPageCount = 2
+            beyondBoundsPageCount = 2
         ) { page ->
             Box(
                 Modifier
@@ -395,4 +375,38 @@ private fun FadeInCard(palette: NeoPalette, content: @Composable () -> Unit) {
 @Composable
 private fun Sidebar(app: AppState, palette: NeoPalette) {
     ReceiptModule(app, palette)
+}
+
+/** 噪点纹理覆盖（body::after）：128px 噪声图平铺，multiply/overlay 混合 */
+private fun Modifier.applyNoiseOverlay(
+    noise: androidx.compose.ui.graphics.ImageBitmap?,
+    palette: NeoPalette
+): Modifier = this.drawWithContent {
+    drawContent()
+    if (noise != null) {
+        val tile = 128.dp.toPx()
+        val alpha = if (palette.isDark) 0.08f else 0.05f
+        val blend = if (palette.isDark) {
+            androidx.compose.ui.graphics.BlendMode.Overlay
+        } else {
+            androidx.compose.ui.graphics.BlendMode.Multiply
+        }
+        var y = 0f
+        while (y < size.height) {
+            var x = 0f
+            while (x < size.width) {
+                val w = minOf(tile, size.width - x).toInt().coerceAtLeast(1)
+                val h = minOf(tile, size.height - y).toInt().coerceAtLeast(1)
+                drawImage(
+                    noise,
+                    dstOffset = androidx.compose.ui.unit.IntOffset(x.toInt(), y.toInt()),
+                    dstSize = androidx.compose.ui.unit.IntSize(w, h),
+                    alpha = alpha,
+                    blendMode = blend
+                )
+                x += tile
+            }
+            y += tile
+        }
+    }
 }

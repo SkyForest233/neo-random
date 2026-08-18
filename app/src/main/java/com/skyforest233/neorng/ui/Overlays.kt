@@ -17,6 +17,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -160,17 +161,17 @@ private fun DrawScope.drawConfetti(particles: List<ConfettiParticle>, palette: N
         val border = 2.dp.toPx()
         rotate(degrees = p.rot, pivot = Offset(cx, cy)) {
             if (p.circle) {
-                drawCircle(color = p.color, radius = r, center = Offset(cx, cy), alpha = p.opacity)
+                drawCircle(p.color, radius = r, center = Offset(cx, cy), alpha = p.opacity)
                 drawCircle(
-                    color = palette.border, radius = r, center = Offset(cx, cy),
+                    palette.border, radius = r, center = Offset(cx, cy),
                     alpha = p.opacity, style = androidx.compose.ui.graphics.drawscope.Stroke(border)
                 )
             } else {
                 val tl = Offset(cx - r, cy - r)
                 val s = androidx.compose.ui.geometry.Size(r * 2f, r * 2f)
-                drawRect(color = p.color, topLeft = tl, size = s, alpha = p.opacity)
+                drawRect(p.color, topLeft = tl, size = s, alpha = p.opacity)
                 drawRect(
-                    color = palette.border, topLeft = tl, size = s,
+                    palette.border, topLeft = tl, size = s,
                     alpha = p.opacity, style = androidx.compose.ui.graphics.drawscope.Stroke(border)
                 )
             }
@@ -195,20 +196,19 @@ fun DrawScope.drawDotGrid(palette: NeoPalette) {
 
 /** 噪点纹理（body::after 的 SVG fractalNoise，multiply/overlay 混合，5%/8% 透明度） */
 @Composable
-fun rememberNoiseBrush(): androidx.compose.ui.graphics.Brush? {
+fun rememberNoiseBitmap(): ImageBitmap? {
     return remember {
         runCatching {
-            val size = 128
-            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val pixels = IntArray(size * size)
+            val n = 128
+            val bmp = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
+            val pixels = IntArray(n * n)
             val rand = java.util.Random(7)
             for (i in pixels.indices) {
                 val g = rand.nextInt(256)
                 pixels[i] = (0xFF shl 24) or (g shl 16) or (g shl 8) or g
             }
-            bmp.setPixels(pixels, 0, size, 0, 0, size, size)
-            val image: ImageBitmap = bmp.asImageBitmap()
-            androidx.compose.ui.graphics.BitmapBrush(image)
+            bmp.setPixels(pixels, 0, n, 0, 0, n, n)
+            bmp.asImageBitmap()
         }.getOrNull()
     }
 }
