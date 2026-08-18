@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,10 +29,20 @@ import com.skyforest233.neorng.NeoPalette
  * 🔢 数字生成器：MIN/MAX/COUNT 输入、绝对唯一开关、
  * 结果药丸逐个弹出（popIn 回弹动画 + tabular-nums 等宽数字）。
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RngModule(app: AppState, palette: NeoPalette) {
-    Column(Modifier.fillMaxWidth()) {
+    var reportedZero by remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                // 诊断：如果面板被测量成零尺寸，弹出提示帮助定位布局问题
+                if (!reportedZero && (coords.size.width == 0 || coords.size.height == 0)) {
+                    reportedZero = true
+                    app.toast("诊断: RNG面板尺寸异常 ${coords.size.width}x${coords.size.height}")
+                }
+            }
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -91,16 +101,27 @@ fun RngModule(app: AppState, palette: NeoPalette) {
             modifier = Modifier.padding(top = 20.dp)
         ) { app.executeRng() }
 
-        // 结果药丸（.rng-number，popIn 逐个出现）
-        FlowRow(
+        // 结果药丸（.rng-number，popIn 逐个出现）—— 每行 4 个手动换行，稳定可靠
+        Column(
             Modifier
                 .fillMaxWidth()
                 .padding(top = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            app.rngResults.forEach { num ->
-                PopInPill(num.toString(), palette)
+            app.rngResults.chunked(4).forEach { rowNums ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowNums.forEach { num ->
+                        Box(Modifier.weight(1f)) {
+                            PopInPill(num.toString(), palette)
+                        }
+                    }
+                    repeat(4 - rowNums.size) {
+                        Box(Modifier.weight(1f))
+                    }
+                }
             }
         }
     }

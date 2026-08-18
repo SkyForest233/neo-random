@@ -70,7 +70,8 @@ class CoinAnim(private val fx: Fx) {
             val diff = target - angle
             y = min(y + 4f, 0f)
             if (diff > 20f) {
-                speed = max(diff * 0.04f, 2f)
+                // 只减速不加速：进入停止阶段时保持当前速度平滑衰减，避免突然加速
+                speed = min(speed, max(diff * 0.04f, 2f)).coerceAtLeast(2f)
                 angle += speed
             } else {
                 speed += diff * 0.2f
@@ -141,7 +142,8 @@ class WheelAnim(private val fx: Fx) {
         } else if (state == AnimState.STOPPING) {
             val diff = target - angle
             if (diff > 15f) {
-                speed = max(diff * 0.025f, 2.5f)
+                // 只减速不加速：速度上限取当前速度，随剩余角度比例平滑衰减
+                speed = min(speed, max(diff * 0.025f, 2.5f)).coerceAtLeast(2.5f)
                 angle += speed
             } else {
                 speed += diff * 0.15f

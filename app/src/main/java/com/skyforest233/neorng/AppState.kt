@@ -183,9 +183,10 @@ class AppState(private val context: Context) : Fx {
     override fun sound(name: String) {
         if (muted) return
         SoundFx.play(name)
-        // 网页版 playSound 内部附带的震动
+        // 音效附带触感（tick 微震 / ding 三连震 / siren 长警报震）
         when (name) {
-            "tick" -> Haptics.vibrate(10)
+            "tick" -> Haptics.vibrate(15)
+            "ding" -> Haptics.vibrate(longArrayOf(0, 30, 50, 30))
             "siren" -> Haptics.vibrate(longArrayOf(100, 100, 100, 100, 100))
         }
     }
@@ -320,6 +321,7 @@ class AppState(private val context: Context) : Fx {
 
     fun executeCoinFlip() {
         if (coin.state != AnimState.IDLE) return
+        vibrateIfEnabled(15)
         coin.beginSpin()
         scope.launch {
             val nums = RngEngine.fetch(1, 1000, 1, false, rngMode) { toast(it) } ?: return@launch
@@ -348,6 +350,7 @@ class AppState(private val context: Context) : Fx {
         if (rngMode != "local" && count > 200) count = 200
         if (count < 1) count = 1
 
+        vibrateIfEnabled(10)
         rngButtonEnabled = false
         rngResults.clear()
         scope.launch {
@@ -374,6 +377,7 @@ class AppState(private val context: Context) : Fx {
     fun executeWheel() {
         val items = parseWheelItems(wheelInput)
         if (wheel.state != AnimState.IDLE || items.isEmpty()) return
+        vibrateIfEnabled(20)
         wheel.autoRemoveWinner = wheelAutoRemove
         wheel.beginSpin()
         scope.launch {
