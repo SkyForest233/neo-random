@@ -6,10 +6,10 @@
 
 package com.skyforest233.neorng.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateColorAsState
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,52 +29,60 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.awaitEachGesture
+import androidx.compose.ui.input.pointer.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.pager.PagerState
 import com.skyforest233.neorng.AnimState
 import com.skyforest233.neorng.AppState
 import com.skyforest233.neorng.NeoPalette
+import com.skyforest233.neorng.NeoSans
 import com.skyforest233.neorng.RngEngine
 import com.skyforest233.neorng.paletteFor
-import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * 应用主界面：头部（标题 + 主题/深浅/静音/随机源切换）、
- * Tab 药丸栏（可左右滑动切换）、小票侧栏；
+ * Tab 药丸栏 + 滑动切换（与网页版一致的 60px 阈值被动手势）、小票侧栏；
  * 宽屏(≥900dp)时双栏布局，与网页版媒体查询一致。
  */
 @Composable
 fun MainScreen(app: AppState) {
     val palette = paletteFor(app.theme, app.dark)
-    val pagerState = rememberPagerState(initialPage = 0) { 3 }
-    val scope = rememberCoroutineScope()
     val noiseBitmap = rememberNoiseBitmap()
+    var currentTab by remember { mutableIntStateOf(0) }
+    val switchTab: (Int) -> Unit = { target ->
+        if (target != currentTab && target in 0..2) {
+            currentTab = target
+            app.vibrate(longArrayOf(0, 10)) // 网页版 switchTab 的 triggerVibrate(10)
+        }
+    }
 
     // 红色警报（EDGE 竖立）：背景红黑交替闪烁 3 秒
     val emergencyBg by animateColorAsState(
@@ -125,7 +133,7 @@ fun MainScreen(app: AppState) {
                     event.key == androidx.compose.ui.input.key.Key.Spacebar &&
                     !app.anyInputFocused
                 ) {
-                    when (pagerState.currentPage) {
+                    when (currentTab) {
                         0 -> app.executeCoinFlip()
                         1 -> app.executeRng()
                         2 -> app.executeWheel()
@@ -159,10 +167,10 @@ fun MainScreen(app: AppState) {
                             .padding(horizontal = 20.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        Column(Modifier.weight(1.5f)) {
-                            MainContent(app, palette, pagerState)
+                        Box(Modifier.weight(1.5f)) {
+                            MainContent(app, palette, currentTab, switchTab)
                         }
-                        Column(Modifier.weight(1f)) {
+                        Box(Modifier.weight(1f)) {
                             Sidebar(app, palette)
                         }
                     }
@@ -173,7 +181,7 @@ fun MainScreen(app: AppState) {
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 16.dp)
                     ) {
-                        MainContent(app, palette, pagerState)
+                        MainContent(app, palette, currentTab, switchTab)
                         Spacer(Modifier.height(24.dp))
                         Sidebar(app, palette)
                         Spacer(Modifier.height(40.dp))
@@ -205,7 +213,7 @@ private fun Header(app: AppState, palette: NeoPalette) {
                 fontSize = 22.sp,
                 fontWeight = FontWeight.W900,
                 letterSpacing = (-0.5).sp,
-                fontFamily = com.skyforest233.neorng.NeoSans
+                fontFamily = NeoSans
             )
         )
         Row(
@@ -245,8 +253,8 @@ private fun ModeBadge(app: AppState, palette: NeoPalette) {
             Box(
                 Modifier
                     .size(10.dp)
-                    .background(dotColor, androidx.compose.foundation.shape.CircleShape)
-                    .border(2.dp, palette.border, androidx.compose.foundation.shape.CircleShape)
+                    .background(dotColor, CircleShape)
+                    .border(2.dp, palette.border, CircleShape)
             )
             NeoText(
                 RngEngine.MODE_LABELS[app.rngMode] ?: "LOCAL RNG",
@@ -260,11 +268,20 @@ private fun ModeBadge(app: AppState, palette: NeoPalette) {
 
 // ==================== 主体内容 ====================
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MainContent(app: AppState, palette: NeoPalette, pagerState: PagerState) {
-    val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxWidth()) {
+private fun MainContent(
+    app: AppState,
+    palette: NeoPalette,
+    currentTab: Int,
+    onSwitchTab: (Int) -> Unit
+) {
+    val tabState by rememberUpdatedState(currentTab)
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .swipeTabDetector { delta -> onSwitchTab(tabState + delta) }
+    ) {
         // Tab 药丸栏（.tabs-container）
         NeoSurface(
             palette = palette,
@@ -275,39 +292,65 @@ private fun MainContent(app: AppState, palette: NeoPalette, pagerState: PagerSta
                 Modifier.padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                TabButton("🪙 Coin", 0, pagerState, palette, Modifier.weight(1f)) { scope.launch { pagerState.animateScrollToPage(0) } }
-                TabButton("🔢 Generator", 1, pagerState, palette, Modifier.weight(1f)) { scope.launch { pagerState.animateScrollToPage(1) } }
-                TabButton("🎡 Wheel", 2, pagerState, palette, Modifier.weight(1f)) { scope.launch { pagerState.animateScrollToPage(2) } }
+                TabButton("🪙 Coin", 0, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(0) }
+                TabButton("🔢 Generator", 1, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(1) }
+                TabButton("🎡 Wheel", 2, currentTab, palette, Modifier.weight(1f)) { onSwitchTab(2) }
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // 页面容器：左右滑动切换（swipe 手势）+ 保持三页状态
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-            beyondBoundsPageCount = 2
-        ) { page ->
-            when (page) {
-                0 -> FadeInCard(palette) { CoinModule(app, palette) }
-                1 -> FadeInCard(palette) { RngModule(app, palette) }
-                else -> FadeInCard(palette) { WheelModule(app, palette) }
-            }
+        // 内容卡片：状态切换（与网页版 switchTab 的 display 切换一致）
+        when (currentTab) {
+            0 -> FadeInCard(palette) { CoinModule(app, palette) }
+            1 -> FadeInCard(palette) { RngModule(app, palette) }
+            else -> FadeInCard(palette) { WheelModule(app, palette) }
         }
     }
 }
+
+/**
+ * 滑动切页手势（网页版 #swipeArea 的 touchstart/touchend 被动监听移植）：
+ * |dx| > 60dp 且 |dx| > 1.5·|dy| 时切换 Tab；不消费事件，不影响内部滚动。
+ */
+private fun Modifier.swipeTabDetector(onSwipe: (deltaTabs: Int) -> Unit): Modifier =
+    this.pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val startX = down.position.x
+            val startY = down.position.y
+            var endX = startX
+            var endY = startY
+            var finished = false
+            while (!finished) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                for (change in event.changes) {
+                    if (change.pressed) {
+                        endX = change.position.x
+                        endY = change.position.y
+                    }
+                    if (change.changedToUp()) finished = true
+                }
+            }
+            val dx = endX - startX
+            val dy = endY - startY
+            val threshold = 60.dp.toPx()
+            if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.5f) {
+                onSwipe(if (dx < 0f) 1 else -1)
+            }
+        }
+    }
 
 @Composable
 private fun TabButton(
     text: String,
     index: Int,
-    pagerState: PagerState,
+    currentTab: Int,
     palette: NeoPalette,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val active = pagerState.currentPage == index
+    val active = currentTab == index
     val bg = if (active) palette.accent else Color.Transparent
     val textColor = if (active) palette.btnText else palette.textMuted
     Box(
@@ -342,26 +385,25 @@ private fun TabButton(
     }
 }
 
-/** 卡片容器（.card）：大圆角 + 硬阴影 + fadeIn 0.3s 入场 */
+/** 卡片容器（.card）：大圆角 + 硬阴影 + fadeIn/translateY 0.3s 入场（.card.active 动画） */
 @Composable
 private fun FadeInCard(palette: NeoPalette, content: @Composable () -> Unit) {
-    val transition = androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true }
-    androidx.compose.animation.AnimatedVisibility(
-        visibleState = transition,
-        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) +
-            androidx.compose.animation.slideInVertically(
-                animationSpec = androidx.compose.animation.core.tween(300),
-                initialOffsetY = { it / 12 }
-            )
-    ) {
-        NeoSurface(
-            palette = palette,
-            radius = 28.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(Modifier.padding(24.dp)) {
-                content()
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, tween(300))
+    }
+    NeoSurface(
+        palette = palette,
+        radius = 28.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                alpha = progress.value
+                translationY = (1f - progress.value) * 10.dp.toPx()
             }
+    ) {
+        Box(Modifier.padding(24.dp)) {
+            content()
         }
     }
 }
@@ -373,7 +415,7 @@ private fun Sidebar(app: AppState, palette: NeoPalette) {
 
 /** 噪点纹理覆盖（body::after）：128px 噪声图平铺，multiply/overlay 混合 */
 private fun Modifier.applyNoiseOverlay(
-    noise: androidx.compose.ui.graphics.ImageBitmap?,
+    noise: ImageBitmap?,
     palette: NeoPalette
 ): Modifier = this.drawWithContent {
     drawContent()
