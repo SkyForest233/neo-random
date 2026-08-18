@@ -38,13 +38,10 @@
 
 ### GitHub Actions 构建（推荐）
 
-仓库自带两个工作流：
+仓库自带工作流 `.github/workflows/android-build.yml`：
 
-1. **Android CI**（`.github/workflows/android-ci.yml`）
-   每次 push / PR 自动编译 debug APK 并上传为 Artifact，用于验证代码可编译。
-
-2. **Android Release**（`.github/workflows/android-release.yml`）
-   推送 `v*` 标签（或手动 workflow_dispatch）时构建签名 Release APK，自动创建 GitHub Release 并附上安装包。
+- **每次 push / PR**：自动编译 debug APK 并上传为 Artifact（验证代码可编译）
+- **推送 `v*` 标签**（如 `v1.0.0`）：构建签名 Release APK，自动创建 GitHub Release 并附上安装包（版本号取自 tag，versionCode 使用 CI 运行序号保证递增）
 
 ## 🔑 配置签名（一次性）
 
