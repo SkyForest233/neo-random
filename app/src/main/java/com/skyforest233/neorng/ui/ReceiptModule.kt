@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -155,56 +156,90 @@ private fun ReceiptCard(app: AppState, palette: NeoPalette) {
     }
 }
 
+// ==================== 小票面板（正面/背面共用骨架） ====================
+
+/**
+ * 小票面板：内容驱动尺寸，min 400dp；drawBehind 一次绘制硬阴影/表面/描边。
+ * 无 fillMaxSize / matchParentSize / weight，滚动容器中不会塌缩。
+ */
+@Composable
+private fun ReceiptPanel(
+    palette: NeoPalette,
+    surfaceBg: Color,
+    surfaceBorder: Color,
+    contentBg: Color,
+    contentColor: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 403.dp)
+            .drawBehind {
+                val dx = 3.dp.toPx()
+                val dy = 3.dp.toPx()
+                val w = size.width - dx
+                val h = size.height - dy
+                val cr = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx())
+                drawRoundRect(
+                    color = palette.shadow,
+                    topLeft = androidx.compose.ui.geometry.Offset(dx, dy),
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr
+                )
+                drawRoundRect(
+                    color = surfaceBg,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr
+                )
+                drawRoundRect(
+                    color = surfaceBorder,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx())
+                )
+            }
+            .padding(end = 3.dp, bottom = 3.dp)
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        content = content
+    )
+}
+
 // ==================== 正面：历史记录 ====================
 
 @Composable
 private fun ReceiptFront(app: AppState, palette: NeoPalette) {
-    val shape = RoundedCornerShape(12.dp)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 400.dp)
+    ReceiptPanel(
+        palette = palette,
+        surfaceBg = palette.card,
+        surfaceBorder = palette.border,
+        contentBg = palette.card,
+        contentColor = palette.textMain
     ) {
-        // 硬阴影
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(start = 3.dp, top = 3.dp)
-                .background(palette.shadow, shape)
+        ReceiptHeader(
+            palette = palette,
+            icon = "🧾",
+            title = "RNG RECORD",
+            subtitle = "# ${app.recordDate}",
+            titleColor = palette.textMain,
+            onTitleButton = { app.flipReceipt(true) },
+            titleButtonEmoji = "📊",
+            dashedColor = palette.textMuted
         )
+
         Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 400.dp)
-                .padding(end = 3.dp, bottom = 3.dp)
-                .background(palette.card, shape)
-                .border(2.5.dp, palette.border, shape)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
+            Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            ReceiptHeader(
-                palette = palette,
-                icon = "🧾",
-                title = "RNG RECORD",
-                subtitle = "# ${app.recordDate}",
-                titleColor = palette.textMain,
-                onTitleButton = { app.flipReceipt(true) },
-                titleButtonEmoji = "📊",
-                dashedColor = palette.textMuted
-            )
-
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(15.dp)
-            ) {
-                app.history.forEach { item ->
-                    HistoryEntry(item, palette)
-                }
+            app.history.forEach { item ->
+                HistoryEntry(item, palette)
             }
-
-            ReceiptFooter(palette, barcodeColor = palette.border, note = "VERIFIED RANDOMNESS", noteColor = palette.textMuted, dashedColor = palette.textMuted)
         }
+
+        ReceiptFooter(palette, barcodeColor = palette.border, note = "VERIFIED RANDOMNESS", noteColor = palette.textMuted, dashedColor = palette.textMuted)
     }
 }
 
@@ -384,59 +419,37 @@ private fun Barcode(color: Color, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ReceiptBack(app: AppState, palette: NeoPalette) {
-    val shape = RoundedCornerShape(12.dp)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 400.dp)
+    ReceiptPanel(
+        palette = palette,
+        surfaceBg = palette.textMain,
+        surfaceBorder = palette.border,
+        contentBg = palette.textMain,
+        contentColor = palette.bg
     ) {
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(start = 3.dp, top = 3.dp)
-                .background(palette.shadow, shape)
+        ReceiptHeader(
+            palette = palette,
+            icon = "📈",
+            title = "DATA INSIGHTS",
+            subtitle = null,
+            titleColor = palette.bg,
+            onTitleButton = { app.flipReceipt(false) },
+            titleButtonEmoji = "🔙",
+            buttonBg = palette.bg,
+            buttonTextColor = palette.textMain,
+            dashedColor = palette.bg
         )
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 400.dp)
-                .padding(end = 3.dp, bottom = 3.dp)
-                .background(palette.textMain, shape)
-                .border(2.5.dp, palette.border, shape)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
-        ) {
-            ReceiptHeader(
-                palette = palette,
-                icon = "📈",
-                title = "DATA INSIGHTS",
-                subtitle = null,
-                titleColor = palette.bg,
-                onTitleButton = { app.flipReceipt(false) },
-                titleButtonEmoji = "🔙",
-                buttonBg = palette.bg,
-                buttonTextColor = palette.textMain,
-                dashedColor = palette.bg
-            )
 
-            val backScroll = rememberScrollState()
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(backScroll),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                StatsContent(app, palette)
-            }
-
-            ReceiptFooter(
-                palette,
-                barcodeColor = palette.bg,
-                note = "DATA DOES NOT LIE",
-                noteColor = palette.bg,
-                dashedColor = palette.bg
-            )
+        Column(Modifier.fillMaxWidth()) {
+            StatsContent(app, palette)
         }
+
+        ReceiptFooter(
+            palette,
+            barcodeColor = palette.bg,
+            note = "DATA DOES NOT LIE",
+            noteColor = palette.bg,
+            dashedColor = palette.bg
+        )
     }
 }
 

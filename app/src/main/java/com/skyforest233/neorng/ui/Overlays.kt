@@ -62,7 +62,7 @@ fun ToastHost(visible: Boolean, message: String?, palette: NeoPalette) {
             shadowDx = 3.dp,
             shadowDy = 3.dp,
             modifier = Modifier
-                .padding(top = 12.dp)
+                .padding(top = 12.dp, start = 16.dp, end = 16.dp)
                 .graphicsLayer {
                     val hidden = -150.dp.toPx()
                     translationY = hidden * (1f - progress.value)

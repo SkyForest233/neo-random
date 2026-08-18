@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -54,8 +55,9 @@ val NeoOvershootEasing = CubicBezierEasing(0.175f, 0.885f, 0.32f, 1.275f)
 
 /**
  * Neo-Brutalism 表面：实色背景 + 粗描边 + 硬偏移阴影。
- * 对应网页版 .card / .status-badge / .wheel-center-btn 等公共视觉语言。
- * pressedTranslate = true 时按下位移(3,3)并消除阴影（:active 效果）。
+ * 尺寸完全由内容驱动：外层用 padding 在右/下预留阴影空间，drawBehind 一次性
+ * 画出阴影层、表面层与描边 —— 不依赖 fillMaxSize/matchParentSize，
+ * 在任何约束（含无限高度的滚动容器）下都不会塌缩或撑满。
  */
 @Composable
 fun NeoSurface(
@@ -73,43 +75,67 @@ fun NeoSurface(
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape: Shape = if (radius >= 100.dp) CircleShape else RoundedCornerShape(radius)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val active = pressedTranslate && pressed
-    val showShadow = shadowEnabled && !active
+    val reserveEnd = if (shadowEnabled) shadowDx else 0.dp
+    val reserveBottom = if (shadowEnabled) shadowDy else 0.dp
 
-    Box(modifier) {
-        if (showShadow) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .padding(start = shadowDx, top = shadowDy)
-                    .background(palette.shadow, shape)
-            )
-        }
-        val contentModifier = Modifier
-            .fillMaxSize()
-            .padding(
-                end = if (showShadow) shadowDx else 0.dp,
-                bottom = if (showShadow) shadowDy else 0.dp
-            )
+    Box(
+        modifier
             .graphicsLayer {
-                translationX = if (active) shadowDx.toPx() else 0f
-                translationY = if (active) shadowDy.toPx() else 0f
+                if (active) {
+                    translationX = shadowDx.toPx()
+                    translationY = shadowDy.toPx()
+                }
             }
-            .background(bg, shape)
-            .border(borderWidth, borderColor, shape)
-        Box(
-            if (onClick != null) {
-                contentModifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            } else {
-                contentModifier
-            },
-            contentAlignment
-        ) {
-            content()
-        }
+            .drawBehind {
+                val dx = reserveEnd.toPx()
+                val dy = reserveBottom.toPx()
+                val w = size.width - dx
+                val h = size.height - dy
+                val cr = if (radius >= 100.dp) {
+                    androidx.compose.ui.geometry.CornerRadius(minOf(w, h) / 2f)
+                } else {
+                    androidx.compose.ui.geometry.CornerRadius(radius.toPx())
+                }
+                // 硬阴影（按下时消失，对应 :active）
+                if (shadowEnabled && !active) {
+                    drawRoundRect(
+                        color = palette.shadow,
+                        topLeft = androidx.compose.ui.geometry.Offset(dx, dy),
+                        size = androidx.compose.ui.geometry.Size(w, h),
+                        cornerRadius = cr
+                    )
+                }
+                // 表面 + 描边
+                drawRoundRect(
+                    color = bg,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr
+                )
+                drawRoundRect(
+                    color = borderColor,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(borderWidth.toPx())
+                )
+            }
+            .padding(end = reserveEnd, bottom = reserveBottom)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onClick
+                    )
+                } else Modifier
+            ),
+        contentAlignment = contentAlignment
+    ) {
+        content()
     }
 }
 
@@ -258,6 +284,7 @@ fun BrutalCheckbox(
 /**
  * 输入框（input[type=text/number]）：
  * 平时 bg-color 背景；聚焦时 card 背景 + 硬阴影 + 上移2px + 3px 描边。
+ * 同样使用内容驱动 + drawBehind 绘制，无塌缩风险。
  */
 @Composable
 fun NeoTextField(
@@ -272,57 +299,73 @@ fun NeoTextField(
     onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(12.dp)
-    Row(
+    Box(
         modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                translationX = if (focused) -2.dp.toPx() else 0f
-                translationY = if (focused) -2.dp.toPx() else 0f
-            }
             .heightIn(min = 52.dp)
+            .graphicsLayer {
+                if (focused) {
+                    translationX = -2.dp.toPx()
+                    translationY = -2.dp.toPx()
+                }
+            }
+            .drawBehind {
+                val dx = 3.dp.toPx()
+                val dy = 3.dp.toPx()
+                val w = size.width - dx
+                val h = size.height - dy
+                val cr = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx())
+                if (focused) {
+                    drawRoundRect(
+                        color = palette.shadow,
+                        topLeft = androidx.compose.ui.geometry.Offset(dx, dy),
+                        size = androidx.compose.ui.geometry.Size(w, h),
+                        cornerRadius = cr
+                    )
+                }
+                drawRoundRect(
+                    color = if (focused) palette.card else palette.bg,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr
+                )
+                drawRoundRect(
+                    color = palette.border,
+                    topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = cr,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        (if (focused) 3.dp else 2.5.dp).toPx()
+                    )
+                )
+            }
+            .padding(end = 3.dp, bottom = 3.dp)
+            .padding(horizontal = 20.dp, vertical = padding),
+        contentAlignment = Alignment.CenterStart
     ) {
-        if (focused) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(start = 3.dp, top = 3.dp)
-                    .background(palette.shadow, shape)
-            )
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(end = if (focused) 3.dp else 0.dp, bottom = if (focused) 3.dp else 0.dp)
-                .background(if (focused) palette.card else palette.bg, shape)
-                .border(if (focused) 3.dp else 2.5.dp, palette.border, shape)
-                .padding(horizontal = 20.dp, vertical = padding),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = singleLine,
-                textStyle = TextStyle(
-                    color = palette.textMain,
-                    fontSize = fontSize,
-                    fontWeight = FontWeight.W700,
-                    fontFamily = NeoSans
-                ),
-                keyboardOptions = if (numeric) {
-                    KeyboardOptions(keyboardType = KeyboardType.Number)
-                } else {
-                    KeyboardOptions.Default
-                },
-                cursorBrush = SolidColor(palette.textMain),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged { state ->
-                        focused = state.isFocused
-                        onFocusChanged?.invoke(state.isFocused)
-                    }
-            )
-        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = TextStyle(
+                color = palette.textMain,
+                fontSize = fontSize,
+                fontWeight = FontWeight.W700,
+                fontFamily = NeoSans
+            ),
+            keyboardOptions = if (numeric) {
+                KeyboardOptions(keyboardType = KeyboardType.Number)
+            } else {
+                KeyboardOptions.Default
+            },
+            cursorBrush = SolidColor(palette.textMain),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { state ->
+                    focused = state.isFocused
+                    onFocusChanged?.invoke(state.isFocused)
+                }
+        )
     }
 }
 
