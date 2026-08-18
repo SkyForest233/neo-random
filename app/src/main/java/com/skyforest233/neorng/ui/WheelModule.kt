@@ -101,7 +101,7 @@ private fun WheelRender(app: AppState, palette: NeoPalette, items: List<WheelIte
             }
 
             // 中心按钮（.wheel-center-btn）
-            CenterSpinButton(app, palette)
+            CenterSpinButton(app, palette, Modifier.align(Alignment.Center))
 
             // 结果印章（.wheel-result-stamp）
             WheelResultStamp(app, palette)
@@ -122,12 +122,11 @@ private fun DrawScope.drawPointer(color: Color, offset: Offset) {
 }
 
 @Composable
-private fun CenterSpinButton(app: AppState, palette: NeoPalette) {
+private fun CenterSpinButton(app: AppState, palette: NeoPalette, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     Box(
-        Modifier
-            .align(Alignment.Center)
+        modifier
             .size(74.dp)
             .graphicsLayer {
                 if (pressed) {
@@ -257,7 +256,7 @@ private fun WheelResultStamp(app: AppState, palette: NeoPalette) {
     }
     if (progress.value <= 0.01f) return
 
-    Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         NeoSurface(
             palette = palette,
             bg = palette.textMain,
