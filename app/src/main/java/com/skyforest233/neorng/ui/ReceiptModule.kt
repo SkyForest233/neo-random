@@ -121,12 +121,12 @@ private fun GhostButton(
 
 @Composable
 private fun ReceiptCard(app: AppState, palette: NeoPalette) {
-    // 翻面动画（0.8s 回弹曲线，与 .receipt-inner transition 一致）
+    // 翻面动画：平滑缓入缓出（无过冲）、扁平透视，避免扭曲观感
     val flip = remember { Animatable(0f) }
     LaunchedEffect(app.receiptFlipped) {
         flip.animateTo(
             if (app.receiptFlipped) 180f else 0f,
-            tween(800, easing = NeoOvershootEasing)
+            tween(650, easing = androidx.compose.animation.core.FastOutSlowInEasing)
         )
     }
     // 撕毁动画：0%: 原位 / 40%: 下移30 旋转2° / 100%: 下坠500 旋转-10° 淡出
@@ -150,9 +150,18 @@ private fun ReceiptCard(app: AppState, palette: NeoPalette) {
             }
             .graphicsLayer {
                 rotationY = flip.value
+                // 网页版无透视（纯 transform），这里拉远相机消除 3D 扭曲
+                cameraDistance = 120.dp.toPx() * 10f
             }
     ) {
-        if (showBack) ReceiptBack(app, palette) else ReceiptFront(app, palette)
+        if (showBack) {
+            // 背面内容预旋转 180°：翻到背面时文字正向可读，过渡中也不会镜像
+            Box(Modifier.graphicsLayer { rotationY = 180f }) {
+                ReceiptBack(app, palette)
+            }
+        } else {
+            ReceiptFront(app, palette)
+        }
     }
 }
 

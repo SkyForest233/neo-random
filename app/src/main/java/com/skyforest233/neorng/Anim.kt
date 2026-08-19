@@ -125,6 +125,7 @@ class WheelAnim(private val fx: Fx) {
     var buttonEnabled by mutableStateOf(true)
     var stampVisible by mutableStateOf(false)
     private var lastTickIdx = -1
+    private var lastTickAt = 0L
     private var armedStop = false
 
     /** 停止后由外部（转盘模块）指定是否自动剔除中奖项 */
@@ -197,7 +198,12 @@ class WheelAnim(private val fx: Fx) {
                     currAng += span
                 }
                 if (lastTickIdx != currentIdx) {
-                    fx.sound("tick")
+                    // 高速旋转时节流（55ms），避免声音/震动刷屏
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (now - lastTickAt > 55L) {
+                        fx.sound("tick")
+                        lastTickAt = now
+                    }
                     lastTickIdx = currentIdx
                 }
             }

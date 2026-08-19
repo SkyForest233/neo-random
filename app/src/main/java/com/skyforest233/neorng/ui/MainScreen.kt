@@ -198,38 +198,72 @@ fun MainScreen(app: AppState) {
 
 @Composable
 private fun Header(app: AppState, palette: NeoPalette) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        androidx.compose.foundation.text.BasicText(
-            text = "NEO_RNG",
-            style = androidx.compose.ui.text.TextStyle(
-                color = palette.textMain,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.W900,
-                letterSpacing = (-0.5).sp,
-                fontFamily = NeoSans
-            )
-        )
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 480
+    if (wide) {
+        // 宽屏：单行（标题 + 4 个控件）
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconCircleButton(emoji = "🎨", palette = palette) { app.cycleTheme() }
-            IconCircleButton(emoji = "🌓", palette = palette) { app.toggleDarkMode() }
-            IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette) { app.toggleMute() }
-            ModeBadge(app, palette)
+            HeaderTitle(palette)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconCircleButton(emoji = "🎨", palette = palette) { app.cycleTheme() }
+                IconCircleButton(emoji = "🌓", palette = palette) { app.toggleDarkMode() }
+                IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette) { app.toggleMute() }
+                ModeBadge(app, palette)
+            }
+        }
+    } else {
+        // 窄屏：两行式 —— 标题+功能图标一行，随机源切换器整行（不再拥挤）
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HeaderTitle(palette)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconCircleButton(emoji = "🎨", palette = palette) { app.cycleTheme() }
+                    IconCircleButton(emoji = "🌓", palette = palette) { app.toggleDarkMode() }
+                    IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette) { app.toggleMute() }
+                }
+            }
+            ModeBadge(app, palette, Modifier.fillMaxWidth())
         }
     }
 }
 
-/** 随机源三态切换徽章（#modeBtn + 状态点颜色） */
 @Composable
-private fun ModeBadge(app: AppState, palette: NeoPalette) {
+private fun HeaderTitle(palette: NeoPalette) {
+    androidx.compose.foundation.text.BasicText(
+        text = "NEO_RNG",
+        style = androidx.compose.ui.text.TextStyle(
+            color = palette.textMain,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.W900,
+            letterSpacing = (-0.5).sp,
+            fontFamily = NeoSans
+        )
+    )
+}
+
+/** 随机源三态切换徽章（#modeBtn + 状态点颜色），支持整宽布局 */
+@Composable
+private fun ModeBadge(app: AppState, palette: NeoPalette, modifier: Modifier = Modifier) {
     val dotColor = when (app.rngMode) {
         "randomorg" -> palette.accent
         "drand" -> palette.accentSub
@@ -242,7 +276,9 @@ private fun ModeBadge(app: AppState, palette: NeoPalette) {
         borderWidth = 2.5.dp,
         shadowDx = 2.dp,
         shadowDy = 2.dp,
-        pressedTranslate = true
+        pressedTranslate = true,
+        modifier = modifier,
+        contentAlignment = Alignment.Center
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 8.dp),

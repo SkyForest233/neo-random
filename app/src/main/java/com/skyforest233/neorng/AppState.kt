@@ -183,9 +183,9 @@ class AppState(private val context: Context) : Fx {
     override fun sound(name: String) {
         if (muted) return
         SoundFx.play(name)
-        // 音效附带触感（tick 微震 / ding 三连震 / siren 长警报震）
+        // 音效附带触感（tick 低振幅微震 / ding 三连震 / siren 长警报震）
         when (name) {
-            "tick" -> Haptics.vibrate(15)
+            "tick" -> Haptics.vibrateLight(12, 64)
             "ding" -> Haptics.vibrate(longArrayOf(0, 30, 50, 30))
             "siren" -> Haptics.vibrate(longArrayOf(100, 100, 100, 100, 100))
         }
@@ -281,7 +281,12 @@ class AppState(private val context: Context) : Fx {
             putExtra(Intent.EXTRA_TITLE, "NEO RNG 小票记录")
         }
         runCatching {
-            context.startActivity(Intent.createChooser(intent, null))
+            // AppState 持有的是 applicationContext，启动 Activity 必须加 NEW_TASK
+            val chooser = Intent.createChooser(intent, null)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
+        }.onFailure {
+            toast("分享面板启动失败: ${it.message ?: "未知错误"}")
         }
     }
 

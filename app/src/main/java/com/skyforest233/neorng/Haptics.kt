@@ -32,4 +32,20 @@ object Haptics {
         if (ms <= 0) return
         vibrate(longArrayOf(0, ms))
     }
+
+    /** 轻触感：低振幅（0-255），适合高频 tick 反馈 */
+    fun vibrateLight(ms: Long, amplitude: Int = 64) {
+        val v = vibrator ?: return
+        runCatching {
+            if (v.hasVibrator()) {
+                v.vibrate(
+                    VibrationEffect.createWaveform(
+                        longArrayOf(0, ms),
+                        intArrayOf(0, amplitude.coerceIn(1, 255)),
+                        -1
+                    )
+                )
+            }
+        }
+    }
 }
