@@ -23,19 +23,21 @@ import kotlin.random.Random
  */
 object RngEngine {
 
-    /** 三种模式的展示名 */
-    val MODES = listOf("randomorg", "drand", "local")
+    /** 四种模式（含混合） */
+    val MODES = listOf("randomorg", "drand", "local", "hybrid")
     val MODE_LABELS = mapOf(
         "randomorg" to "RANDOM.ORG",
         "drand" to "CF DRAND",
-        "local" to "LOCAL RNG"
+        "local" to "LOCAL RNG",
+        "hybrid" to "HYBRID MIX"
     )
 
     /** 顶部徽章使用的短标签（单行紧凑排版） */
     val MODE_LABELS_SHORT = mapOf(
         "randomorg" to "RNG.ORG",
         "drand" to "DRAND",
-        "local" to "LOCAL"
+        "local" to "LOCAL",
+        "hybrid" to "MIX"
     )
 
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -70,7 +72,57 @@ object RngEngine {
                 localRandom(min, max, count, unique, Int.MAX_VALUE)
             }
             "drand" -> fetchDrand(min, max, count, unique, onNotice)
+            "hybrid" -> fetchHybrid(min, max, count, unique, onNotice)
             else -> fetchRandomOrg(min, max, count, unique, onNotice)
+        }
+    }
+
+    /**
+     * 混合模式：drand + random.org + 本地随机 三源并行，逐位求和取模混合。
+     * 任一远程源失败自动降级为剩余来源（两个都失败则纯本地并提示）。
+     */
+    private suspend fun fetchHybrid(
+        min: Int, max: Int, count: Int, unique: Boolean, onNotice: (String) -> Unit
+    ): List<Int> {
+        val range = max - min + 1
+        val want = if (unique) min(count * 3, 10000) else count
+
+        return kotlinx.coroutines.coroutineScope {
+            val orgDeferred = kotlinx.coroutines.async(Dispatchers.IO) {
+                runCatching { randomOrgRaw(min, max, want) }.getOrNull()
+            }
+            val drandDeferred = kotlinx.coroutines.async(Dispatchers.IO) {
+                runCatching { drandRaw(min, max, want) }.getOrNull()
+            }
+            val localPool = List(want) { min + floor(Random.nextDouble() * range).toInt() }
+            val org = orgDeferred.await()
+            val drand = drandDeferred.await()
+            val remotes = listOfNotNull(org, drand)
+            if (remotes.isEmpty()) {
+                onNotice("远程源均不可用，混合模式临时使用本地随机")
+            } else if (org == null || drand == null) {
+                onNotice("混合模式: 一个远程源不可用，已用其余来源混合")
+            }
+
+            fun mixedAt(i: Int): Int {
+                var sum = localPool[i] - min
+                for (arr in remotes) sum += (arr[i % arr.size] - min)
+                return min + ((sum % range) + range) % range
+            }
+
+            if (!unique) {
+                List(count) { mixedAt(it) }
+            } else {
+                val set = LinkedHashSet<Int>()
+                var i = 0
+                while (set.size < count && i < want) {
+                    set.add(mixedAt(i)); i++
+                }
+                while (set.size < count) {
+                    set.add(min + floor(Random.nextDouble() * range).toInt())
+                }
+                set.toList()
+            }
         }
     }
 
@@ -87,38 +139,51 @@ object RngEngine {
         return if (unique) set.toList() else results
     }
 
+    /** drand 原始抓取（失败抛异常，无降级） */
+    private suspend fun drandRaw(min: Int, max: Int, count: Int): List<Int> {
+        val range = max - min + 1
+        val body = withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("https://drand.cloudflare.com/public/latest")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IllegalStateException("Drand API Limit")
+                response.body?.string() ?: throw IllegalStateException("Drand empty body")
+            }
+        }
+        val root = JSONObject(body)
+        val round = root.getLong("round")
+        val hex = root.getString("randomness")
+
+        // 防碰撞：同一轮 beacon 多次请求时增加 nonce 偏移
+        if (round == drandLastRound) drandNonce += 100 else { drandLastRound = round; drandNonce = 0 }
+
+        val results = ArrayList<Int>(count)
+        var index = 0
+        while (results.size < count && index < 100000) {
+            val randomFloat = sha256FirstUint32("$hex" + "_" + (drandNonce + index)) / 4294967296.0
+            results.add(min + floor(randomFloat * range).toInt())
+            index++
+        }
+        drandNonce += index
+        return results
+    }
+
     private suspend fun fetchDrand(
         min: Int, max: Int, count: Int, unique: Boolean, onNotice: (String) -> Unit
     ): List<Int> {
-        val range = max - min + 1
         return try {
-            val body = withContext(Dispatchers.IO) {
-                val request = Request.Builder()
-                    .url("https://drand.cloudflare.com/public/latest")
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw IllegalStateException("Drand API Limit")
-                    response.body?.string() ?: throw IllegalStateException("Drand empty body")
+            if (unique) {
+                val range = max - min + 1
+                val nums = drandRaw(min, max, count)
+                val set = LinkedHashSet(nums)
+                while (set.size < count) {
+                    set.add(min + floor(Random.nextDouble() * range).toInt())
                 }
+                set.toList()
+            } else {
+                drandRaw(min, max, count)
             }
-            val root = JSONObject(body)
-            val round = root.getLong("round")
-            val hex = root.getString("randomness")
-
-            // 防碰撞：同一轮 beacon 多次请求时增加 nonce 偏移
-            if (round == drandLastRound) drandNonce += 100 else { drandLastRound = round; drandNonce = 0 }
-
-            val results = ArrayList<Int>()
-            val set = LinkedHashSet<Int>()
-            var index = 0
-            while ((if (unique) set.size else results.size) < count && index < 100000) {
-                val randomFloat = sha256FirstUint32("$hex" + "_" + (drandNonce + index)) / 4294967296.0
-                val num = min + floor(randomFloat * range).toInt()
-                if (unique) set.add(num) else results.add(num)
-                index++
-            }
-            drandNonce += index
-            if (unique) set.toList() else results
         } catch (err: Throwable) {
             onNotice("DRAND 限制或非安全环境，临时降级本地随机")
             localRandom(min, max, count, unique, Int.MAX_VALUE)
@@ -135,25 +200,29 @@ object RngEngine {
         return value
     }
 
+    /** random.org 原始抓取（失败抛异常，无降级） */
+    private suspend fun randomOrgRaw(min: Int, max: Int, count: Int): List<Int> {
+        val body = withContext(Dispatchers.IO) {
+            val url = "https://www.random.org/integers/?num=$count&min=$min&max=$max" +
+                "&col=1&base=10&format=plain&rnd=new"
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IllegalStateException("API Limit")
+                response.body?.string() ?: throw IllegalStateException("empty body")
+            }
+        }
+        val nums = body.trim().split('\n').mapNotNull { it.trim().toIntOrNull() }
+        if (nums.isEmpty()) throw IllegalStateException("Parse Error")
+        return nums
+    }
+
     private suspend fun fetchRandomOrg(
         min: Int, max: Int, count: Int, unique: Boolean, onNotice: (String) -> Unit
     ): List<Int> {
         val range = max - min + 1
         return try {
             val reqCount = if (unique) min(count * 3, 10000) else count
-            val body = withContext(Dispatchers.IO) {
-                val url = "https://www.random.org/integers/?num=$reqCount&min=$min&max=$max" +
-                    "&col=1&base=10&format=plain&rnd=new"
-                val request = Request.Builder().url(url).build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw IllegalStateException("API Limit")
-                    response.body?.string() ?: throw IllegalStateException("empty body")
-                }
-            }
-            val nums = body.trim().split('\n')
-                .mapNotNull { it.trim().toIntOrNull() }
-            if (nums.isEmpty()) throw IllegalStateException("Parse Error")
-
+            val nums = randomOrgRaw(min, max, reqCount)
             if (unique) {
                 val uniqueNums = nums.distinct()
                 if (uniqueNums.size >= count) {
