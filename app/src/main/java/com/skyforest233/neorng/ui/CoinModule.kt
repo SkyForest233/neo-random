@@ -201,17 +201,8 @@ private fun DrawScope.drawCoin3D(
         style = Stroke(2.5f.dp.toPx())
     )
 
-    // 2) 远面残影（侧边另一端能看到的椭圆弧）
-    if (cosA > 0.02f) {
-        val farFill = if (showBack) palette.card else palette.accent
-        drawOval(
-            color = farFill,
-            topLeft = Offset(farX - nearRx, cy - R),
-            size = Size(nearRx * 2f, R * 2f)
-        )
-    }
-
-    // 3) 近面（正面 card / 背面 accent）
+    // 2) 近面（正面 card / 背面 accent）
+    // 注：不透明圆柱的远端面被自身遮挡，永远不可见（此前误画导致侧边残留色条）
     if (cosA > 0.02f) {
         val nearFill = if (showBack) palette.accent else palette.card
         drawOval(
