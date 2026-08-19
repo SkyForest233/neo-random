@@ -62,24 +62,30 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    // 折叠/展开：animateContentSize + clipToBounds（compose-animations skill 推荐的最小 API）
-    // —— 高度无弹跳弹簧动画，内容裁剪揭示，无透明度动画（边框无伪影）
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clipToBounds()
-            .animateContentSize(
-                // 无弹跳弹簧：dampingRatio=1f (NoBounciness), stiffness=250f (MediumLow)
-                animationSpec = spring(dampingRatio = 1f, stiffness = 250f)
-            )
-    ) {
-        if (app.receiptCollapsed) {
-            CollapsedReceipt(app, palette)
-        } else {
-            Box {
-                ReceiptCard(app, palette)
+    // 折叠/展开过渡：打印机式纵向滑动 —— 旧小票向上滑出、新小票从下方滑入，
+    // 容器高度同步平滑动画（SizeTransform），全程无透明度（边框无伪影）
+    Box(Modifier.fillMaxWidth().clipToBounds()) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = app.receiptCollapsed,
+            transitionSpec = {
+                androidx.compose.animation.slideInVertically(
+                    tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                ) { it } togetherWith androidx.compose.animation.slideOutVertically(
+                    tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                ) { -it }
+            },
+            label = "receiptCollapse"
+        ) { collapsed ->
+            if (collapsed) {
+                CollapsedReceipt(app, palette)
+            } else {
+                Column {
+                    Box {
+                        ReceiptCard(app, palette)
+                    }
+                    ReceiptActions(app, palette)
+                }
             }
-            ReceiptActions(app, palette)
         }
     }
 }
@@ -126,14 +132,11 @@ private fun CollapsedReceipt(app: AppState, palette: NeoPalette) {
                     verticalAlignment = Alignment.Top
                 ) {
                     IconCircleButton(
-                        emoji = "📊",
+                        emoji = "🔽",
                         palette = palette,
                         size = 30.dp,
-                        contentDescription = "展开并查看全部统计"
-                    ) {
-                        app.flipReceipt(true)
-                        app.toggleReceiptCollapsed()
-                    }
+                        contentDescription = "展开小票"
+                    ) { app.toggleReceiptCollapsed() }
                     Column(
                         Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -157,11 +160,14 @@ private fun CollapsedReceipt(app: AppState, palette: NeoPalette) {
                         )
                     }
                     IconCircleButton(
-                        emoji = "🔽",
+                        emoji = "📊",
                         palette = palette,
                         size = 30.dp,
-                        contentDescription = "展开小票"
-                    ) { app.toggleReceiptCollapsed() }
+                        contentDescription = "展开并查看全部统计"
+                    ) {
+                        app.flipReceipt(true)
+                        app.toggleReceiptCollapsed()
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 DashedDivider(palette.textMuted)
