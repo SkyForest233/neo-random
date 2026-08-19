@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
@@ -312,23 +313,27 @@ private fun MainContent(
 
         Spacer(Modifier.height(20.dp))
 
-        // 内容卡片：带方向感的左右滑动切换（纯位移无透明度，边框不闪）
+        // 卡片框架常驻（边框/阴影永不动 → 无细变粗伪影），内容在卡片内方向性滑动
         val ease = androidx.compose.animation.core.FastOutSlowInEasing
-        androidx.compose.animation.AnimatedContent(
-            targetState = currentTab,
-            transitionSpec = {
-                val dir = if (targetState > initialState) 1 else -1
-                (
-                    androidx.compose.animation.slideInHorizontally(tween(300, easing = ease)) { dir * it / 4 } togetherWith
-                        androidx.compose.animation.slideOutHorizontally(tween(300, easing = ease)) { -dir * it / 4 }
-                    )
-            },
-            label = "tabContent"
-        ) { tab ->
-            when (tab) {
-                0 -> FadeInCard(palette) { CoinModule(app, palette) }
-                1 -> FadeInCard(palette) { RngModule(app, palette) }
-                else -> FadeInCard(palette) { WheelModule(app, palette) }
+        FadeInCard(palette) {
+            Box(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))) {
+                androidx.compose.animation.AnimatedContent(
+                    targetState = currentTab,
+                    transitionSpec = {
+                        val dir = if (targetState > initialState) 1 else -1
+                        (
+                            androidx.compose.animation.slideInHorizontally(tween(280, easing = ease)) { dir * it / 3 } togetherWith
+                                androidx.compose.animation.slideOutHorizontally(tween(280, easing = ease)) { -dir * it / 3 }
+                            )
+                    },
+                    label = "tabContent"
+                ) { tab ->
+                    when (tab) {
+                        0 -> CoinModule(app, palette)
+                        1 -> RngModule(app, palette)
+                        else -> WheelModule(app, palette)
+                    }
+                }
             }
         }
     }

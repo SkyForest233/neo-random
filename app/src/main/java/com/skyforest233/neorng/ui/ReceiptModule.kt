@@ -59,27 +59,29 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    // 折叠/展开用 AnimatedVisibility + expand/shrinkVertically（滚动容器中可靠的高度动画）
+    // 折叠/展开：AnimatedContent + SizeTransform(clip) —— 容器高度平滑动画 + 裁剪揭示，
+    // 内容瞬时替换（无透明度动画 → 边框无伪影，无双面板叠高 → 无跳变）
     Column(Modifier.fillMaxWidth()) {
-        // 纯高度展开/收拢：不做透明度动画（避免边框先细后粗），时长放缓手感更柔
-        val ease = androidx.compose.animation.core.FastOutSlowInEasing
-        androidx.compose.animation.AnimatedVisibility(
-            visible = app.receiptCollapsed,
-            enter = androidx.compose.animation.expandVertically(tween(350, easing = ease)),
-            exit = androidx.compose.animation.shrinkVertically(tween(280, easing = ease))
-        ) {
-            CollapsedReceipt(app, palette)
-        }
-        androidx.compose.animation.AnimatedVisibility(
-            visible = !app.receiptCollapsed,
-            enter = androidx.compose.animation.expandVertically(tween(350, easing = ease)),
-            exit = androidx.compose.animation.shrinkVertically(tween(280, easing = ease))
-        ) {
-            Column {
-                Box {
-                    ReceiptCard(app, palette)
+        androidx.compose.animation.AnimatedContent(
+            targetState = app.receiptCollapsed,
+            transitionSpec = {
+                androidx.compose.animation.ContentTransform(
+                    androidx.compose.animation.EnterTransition.None,
+                    androidx.compose.animation.ExitTransition.None,
+                    sizeTransform = androidx.compose.animation.SizeTransform(clip = true)
+                )
+            },
+            label = "receiptCollapse"
+        ) { collapsed ->
+            if (collapsed) {
+                CollapsedReceipt(app, palette)
+            } else {
+                Column {
+                    Box {
+                        ReceiptCard(app, palette)
+                    }
+                    ReceiptActions(app, palette)
                 }
-                ReceiptActions(app, palette)
             }
         }
     }
@@ -126,7 +128,15 @@ private fun CollapsedReceipt(app: AppState, palette: NeoPalette) {
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top
                 ) {
-                    Box(Modifier.size(36.dp))
+                    IconCircleButton(
+                        emoji = "📊",
+                        palette = palette,
+                        size = 30.dp,
+                        contentDescription = "展开并查看全部统计"
+                    ) {
+                        app.flipReceipt(true)
+                        app.toggleReceiptCollapsed()
+                    }
                     Column(
                         Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -668,13 +678,13 @@ private fun StatBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(Modifier.width(45.dp), contentAlignment = Alignment.CenterEnd) {
+        Box(Modifier.widthIn(max = 64.dp), contentAlignment = Alignment.CenterEnd) {
             NeoText(
                 label,
                 color = overrideColor ?: palette.bg,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.W700,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
