@@ -2,7 +2,6 @@ package com.skyforest233.neorng.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -70,10 +69,8 @@ fun ReceiptModule(app: AppState, palette: NeoPalette) {
             .fillMaxWidth()
             .clipToBounds()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBounciness,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                // 无弹跳弹簧：dampingRatio=1f (NoBounciness), stiffness=250f (MediumLow)
+                animationSpec = spring(dampingRatio = 1f, stiffness = 250f)
             )
     ) {
         if (app.receiptCollapsed) {
