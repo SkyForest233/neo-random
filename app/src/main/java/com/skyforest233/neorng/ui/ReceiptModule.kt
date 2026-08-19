@@ -61,22 +61,19 @@ private val EdgeRed = Color(0xFFFF3366)
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
     // 折叠/展开用 AnimatedVisibility + expand/shrinkVertically（滚动容器中可靠的高度动画）
     Column(Modifier.fillMaxWidth()) {
+        // 纯高度展开/收拢：不做透明度动画（避免边框先细后粗），时长放缓手感更柔
         val ease = androidx.compose.animation.core.FastOutSlowInEasing
         androidx.compose.animation.AnimatedVisibility(
             visible = app.receiptCollapsed,
-            enter = androidx.compose.animation.expandVertically(tween(300, easing = ease)) +
-                androidx.compose.animation.fadeIn(tween(250)),
-            exit = androidx.compose.animation.shrinkVertically(tween(250, easing = ease)) +
-                androidx.compose.animation.fadeOut(tween(200))
+            enter = androidx.compose.animation.expandVertically(tween(350, easing = ease)),
+            exit = androidx.compose.animation.shrinkVertically(tween(280, easing = ease))
         ) {
             CollapsedReceiptBar(app, palette)
         }
         androidx.compose.animation.AnimatedVisibility(
             visible = !app.receiptCollapsed,
-            enter = androidx.compose.animation.expandVertically(tween(300, easing = ease)) +
-                androidx.compose.animation.fadeIn(tween(250)),
-            exit = androidx.compose.animation.shrinkVertically(tween(250, easing = ease)) +
-                androidx.compose.animation.fadeOut(tween(200))
+            enter = androidx.compose.animation.expandVertically(tween(350, easing = ease)),
+            exit = androidx.compose.animation.shrinkVertically(tween(280, easing = ease))
         ) {
             Column {
                 Box {

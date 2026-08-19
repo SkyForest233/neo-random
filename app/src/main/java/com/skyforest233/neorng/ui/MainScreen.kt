@@ -397,19 +397,17 @@ private fun TabButton(
     }
 }
 
-/** 卡片容器（.card）：大圆角 + 硬阴影 + fadeIn/translateY 0.3s 入场（.card.active 动画） */
+/**
+ * 卡片容器（.card）：大圆角 + 硬阴影。
+ * 注：不做入场透明度动画 —— 带边框图层做 alpha 动画会让边框先细后粗（光栅化特性），
+ * 因此切换 Tab 时卡片直接完整呈现，边框始终清晰。
+ */
 @Composable
 private fun FadeInCard(palette: NeoPalette, content: @Composable () -> Unit) {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        progress.animateTo(1f, tween(250))
-    }
     NeoSurface(
         palette = palette,
         radius = 28.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer { alpha = progress.value }
+        modifier = Modifier.fillMaxWidth()
     ) {
         Box(Modifier.padding(24.dp)) {
             content()
