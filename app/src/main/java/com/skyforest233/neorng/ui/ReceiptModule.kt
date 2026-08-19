@@ -1,6 +1,5 @@
 package com.skyforest233.neorng.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -60,31 +59,47 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    // 折叠/展开带平滑尺寸动画
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
-        if (app.receiptCollapsed) {
+    // 折叠/展开用 AnimatedVisibility + expand/shrinkVertically（滚动容器中可靠的高度动画）
+    Column(Modifier.fillMaxWidth()) {
+        val ease = androidx.compose.animation.core.FastOutSlowInEasing
+        androidx.compose.animation.AnimatedVisibility(
+            visible = app.receiptCollapsed,
+            enter = androidx.compose.animation.expandVertically(tween(300, easing = ease)) +
+                androidx.compose.animation.fadeIn(tween(250)),
+            exit = androidx.compose.animation.shrinkVertically(tween(250, easing = ease)) +
+                androidx.compose.animation.fadeOut(tween(200))
+        ) {
             CollapsedReceiptBar(app, palette)
-        } else {
-            Box {
-                ReceiptCard(app, palette)
-            }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 15.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                GhostButton(
-                    text = "📤 分享小票",
-                    palette = palette,
-                    modifier = Modifier.weight(1f)
-                ) { app.shareReceipt() }
-                GhostButton(
-                    text = "🗑 撕毁清空",
-                    palette = palette,
-                    color = EdgeRed,
-                    modifier = Modifier.weight(1f)
-                ) { app.tearReceipt() }
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !app.receiptCollapsed,
+            enter = androidx.compose.animation.expandVertically(tween(300, easing = ease)) +
+                androidx.compose.animation.fadeIn(tween(250)),
+            exit = androidx.compose.animation.shrinkVertically(tween(250, easing = ease)) +
+                androidx.compose.animation.fadeOut(tween(200))
+        ) {
+            Column {
+                Box {
+                    ReceiptCard(app, palette)
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 15.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    GhostButton(
+                        text = "📤 分享小票",
+                        palette = palette,
+                        modifier = Modifier.weight(1f)
+                    ) { app.shareReceipt() }
+                    GhostButton(
+                        text = "🗑 撕毁清空",
+                        palette = palette,
+                        color = EdgeRed,
+                        modifier = Modifier.weight(1f)
+                    ) { app.tearReceipt() }
+                }
             }
         }
     }

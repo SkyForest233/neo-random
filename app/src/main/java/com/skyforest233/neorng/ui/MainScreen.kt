@@ -402,17 +402,14 @@ private fun TabButton(
 private fun FadeInCard(palette: NeoPalette, content: @Composable () -> Unit) {
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        progress.animateTo(1f, tween(300))
+        progress.animateTo(1f, tween(250))
     }
     NeoSurface(
         palette = palette,
         radius = 28.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                alpha = progress.value
-                translationY = (1f - progress.value) * 10.dp.toPx()
-            }
+            .graphicsLayer { alpha = progress.value }
     ) {
         Box(Modifier.padding(24.dp)) {
             content()
