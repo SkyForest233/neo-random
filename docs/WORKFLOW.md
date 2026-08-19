@@ -40,6 +40,8 @@ gh api repos/SkyForest233/neo-random/check-runs/$JOBID/annotations --jq '.[] | .
 3. 打标签：`git tag v1.2.3 && git push origin v1.2.3`
 4. Actions 自动：签名构建 → `NEO-RNG-v1.2.3.apk` → 发布 GitHub Release（版本号取 tag，versionCode=run_number）
 
+> 也可直接在网页「Draft a new release」发布：触发的是 `release` 事件（而非 tag push），工作流同样会构建并上传 APK 到该 Release。
+
 ## 3. 排查流程
 
 | 症状 | 工具 |
