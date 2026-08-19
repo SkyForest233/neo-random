@@ -31,6 +31,13 @@ object RngEngine {
         "local" to "LOCAL RNG"
     )
 
+    /** 顶部徽章使用的短标签（单行紧凑排版） */
+    val MODE_LABELS_SHORT = mapOf(
+        "randomorg" to "RNG.ORG",
+        "drand" to "DRAND",
+        "local" to "LOCAL"
+    )
+
     private val client: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(4, TimeUnit.SECONDS)
         .connectTimeout(4, TimeUnit.SECONDS)
