@@ -42,6 +42,9 @@
 
 - **每次 push / PR**：自动编译 debug APK 并上传为 Artifact（验证代码可编译）
 - **推送 `v*` 标签**（如 `v1.0.0`）：构建签名 Release APK，自动创建 GitHub Release 并附上安装包（版本号取自 tag，versionCode 使用 CI 运行序号保证递增）
+- **网页「Publish release」**：同样会触发签名 Release 构建，并把 APK 上传到该 Release（不会覆盖你手写的 release notes）
+
+Release 包已开启 **R8 代码压缩 + 资源收缩**（`isMinifyEnabled` / `isShrinkResources`），体积更小、运行更省内存。
 
 ## 🔑 配置签名（一次性）
 
