@@ -138,6 +138,8 @@ private fun CoinScene(app: AppState, palette: NeoPalette, modifier: Modifier = M
             .graphicsLayer {
                 translationY = coin.y.dp.toPx()
                 rotationX = coin.rx
+                // 对应网页 .coin-scene 的 perspective: 1200px，透视轻微不扭曲
+                cameraDistance = 1200.dp.toPx()
             },
         contentAlignment = Alignment.Center
     ) {
@@ -172,7 +174,7 @@ private fun DrawScope.drawCoin3D(
     val rad = Math.toRadians(angleDeg.toDouble())
     val cosA = abs(cos(rad)).toFloat()
     val sinA = sin(rad).toFloat()
-    val halfThick = 4.dp.toPx() // ±4dp = 8dp 厚度（web ±8px）
+    val halfThick = 8.dp.toPx() // ±8dp = 16dp 厚度（与网页 translateZ(±8px) 一致）
 
     val showBack = (((angleDeg % 360f) + 360f) % 360f).let { it >= 90f && it < 270f }
     // 朝向观察者的面（近面）与远离的面（远面）
