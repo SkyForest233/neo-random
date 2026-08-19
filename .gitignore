@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+local.properties
+
+# Signing — never commit keystores
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+
+# 签名密钥（绝不入库）
+*.p12
+*.pfx
