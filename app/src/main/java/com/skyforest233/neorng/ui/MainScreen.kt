@@ -248,7 +248,6 @@ private fun ModeBadge(app: AppState, palette: NeoPalette, modifier: Modifier = M
         shadowDx = 2.dp,
         shadowDy = 2.dp,
         pressedTranslate = true,
-        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Row(
