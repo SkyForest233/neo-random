@@ -283,7 +283,8 @@ private fun ReceiptFront(app: AppState, palette: NeoPalette) {
             titleColor = palette.textMain,
             onTitleButton = { app.flipReceipt(true) },
             titleButtonEmoji = "📊",
-            dashedColor = palette.textMuted
+            dashedColor = palette.textMuted,
+            onCollapse = { app.toggleReceiptCollapsed() }
         )
 
         Column(
@@ -311,19 +312,24 @@ private fun ReceiptHeader(
     headerBg: Color = Color.Transparent,
     buttonBg: Color = palette.card,
     buttonTextColor: Color = palette.textMain,
-    dashedColor: Color
+    dashedColor: Color,
+    onCollapse: (() -> Unit)? = null
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            IconCircleButton(
-                emoji = "🔼",
-                palette = palette,
-                size = 30.dp,
-                contentDescription = "折叠小票"
-            ) { app.toggleReceiptCollapsed() }
+            if (onCollapse != null) {
+                IconCircleButton(
+                    emoji = "🔼",
+                    palette = palette,
+                    size = 30.dp,
+                    contentDescription = "折叠小票"
+                ) { onCollapse() }
+            } else {
+                Box(Modifier.size(36.dp))
+            }
             Column(
                 Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
