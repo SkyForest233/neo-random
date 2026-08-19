@@ -1,6 +1,8 @@
 package com.skyforest233.neorng
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -87,11 +89,11 @@ object RngEngine {
         val range = max - min + 1
         val want = if (unique) min(count * 3, 10000) else count
 
-        return kotlinx.coroutines.coroutineScope {
-            val orgDeferred = kotlinx.coroutines.async(Dispatchers.IO) {
+        return coroutineScope {
+            val orgDeferred = async(Dispatchers.IO) {
                 runCatching { randomOrgRaw(min, max, want) }.getOrNull()
             }
-            val drandDeferred = kotlinx.coroutines.async(Dispatchers.IO) {
+            val drandDeferred = async(Dispatchers.IO) {
                 runCatching { drandRaw(min, max, want) }.getOrNull()
             }
             val localPool = List(want) { min + floor(Random.nextDouble() * range).toInt() }
