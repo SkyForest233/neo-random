@@ -7,6 +7,7 @@
 package com.skyforest233.neorng.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -311,11 +312,24 @@ private fun MainContent(
 
         Spacer(Modifier.height(20.dp))
 
-        // 内容卡片：状态切换（与网页版 switchTab 的 display 切换一致）
-        when (currentTab) {
-            0 -> FadeInCard(palette) { CoinModule(app, palette) }
-            1 -> FadeInCard(palette) { RngModule(app, palette) }
-            else -> FadeInCard(palette) { WheelModule(app, palette) }
+        // 内容卡片：带方向感的左右滑动切换（纯位移无透明度，边框不闪）
+        val ease = androidx.compose.animation.core.FastOutSlowInEasing
+        androidx.compose.animation.AnimatedContent(
+            targetState = currentTab,
+            transitionSpec = {
+                val dir = if (targetState > initialState) 1 else -1
+                (
+                    androidx.compose.animation.slideInHorizontally(tween(300, easing = ease)) { dir * it / 4 } togetherWith
+                        androidx.compose.animation.slideOutHorizontally(tween(300, easing = ease)) { -dir * it / 4 }
+                    )
+            },
+            label = "tabContent"
+        ) { tab ->
+            when (tab) {
+                0 -> FadeInCard(palette) { CoinModule(app, palette) }
+                1 -> FadeInCard(palette) { RngModule(app, palette) }
+                else -> FadeInCard(palette) { WheelModule(app, palette) }
+            }
         }
     }
 }

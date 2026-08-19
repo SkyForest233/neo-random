@@ -68,7 +68,7 @@ fun ReceiptModule(app: AppState, palette: NeoPalette) {
             enter = androidx.compose.animation.expandVertically(tween(350, easing = ease)),
             exit = androidx.compose.animation.shrinkVertically(tween(280, easing = ease))
         ) {
-            CollapsedReceiptBar(app, palette)
+            CollapsedReceipt(app, palette)
         }
         androidx.compose.animation.AnimatedVisibility(
             visible = !app.receiptCollapsed,
@@ -79,65 +79,104 @@ fun ReceiptModule(app: AppState, palette: NeoPalette) {
                 Box {
                     ReceiptCard(app, palette)
                 }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 15.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    GhostButton(
-                        text = "📤 分享小票",
-                        palette = palette,
-                        modifier = Modifier.weight(1f)
-                    ) { app.shareReceipt() }
-                    GhostButton(
-                        text = "🗑 撕毁清空",
-                        palette = palette,
-                        color = EdgeRed,
-                        modifier = Modifier.weight(1f)
-                    ) { app.tearReceipt() }
-                }
+                ReceiptActions(app, palette)
             }
         }
     }
 }
 
-/** 折叠态：紧凑摘要栏（🧾 + 记录数 + 展开箭头），整条可点 */
+/** 分享 / 撕毁按钮（折叠与展开两态共用） */
 @Composable
-private fun CollapsedReceiptBar(app: AppState, palette: NeoPalette) {
-    NeoSurface(
-        palette = palette,
-        onClick = { app.toggleReceiptCollapsed() },
-        radius = 12.dp,
-        modifier = Modifier
+private fun ReceiptActions(app: AppState, palette: NeoPalette) {
+    Row(
+        Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "小票已折叠，共" + app.history.size + "条记录，点按展开" }
+            .padding(top = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        GhostButton(
+            text = "📤 分享小票",
+            palette = palette,
+            modifier = Modifier.weight(1f)
+        ) { app.shareReceipt() }
+        GhostButton(
+            text = "🗑 撕毁清空",
+            palette = palette,
+            color = EdgeRed,
+            modifier = Modifier.weight(1f)
+        ) { app.tearReceipt() }
+    }
+}
+
+/** 折叠态：迷你小票 —— 展示最近 6 条记录 + 展开/分享/撕毁 */
+@Composable
+private fun CollapsedReceipt(app: AppState, palette: NeoPalette) {
+    Column(Modifier.fillMaxWidth()) {
+        ReceiptPanel(
+            palette = palette,
+            surfaceBg = palette.card,
+            surfaceBorder = palette.border,
+            contentBg = palette.card,
+            contentColor = palette.textMain,
+            minHeight = 220.dp
         ) {
-            NeoText("🧾", color = palette.textMain, fontSize = 20.sp, fontWeight = FontWeight.W400)
-            NeoText(
-                "RNG RECORD",
-                color = palette.textMain,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.W900,
-                letterSpacing = 1.sp
-            )
-            Box(Modifier.weight(1f))
-            NeoText(
-                app.history.size.toString() + " 条",
-                color = palette.textMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.W700,
-                fontFamily = NeoMono
-            )
-            NeoText("🔽", color = palette.textMuted, fontSize = 14.sp, fontWeight = FontWeight.W400)
+            // 迷你头部
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(Modifier.size(36.dp))
+                    Column(
+                        Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        NeoText("🧾", color = palette.textMain, fontSize = 26.sp, fontWeight = FontWeight.W400)
+                        Spacer(Modifier.height(4.dp))
+                        NeoText(
+                            "RNG RECORD",
+                            color = palette.textMain,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.W900,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        NeoText(
+                            "共 ${app.history.size} 条 · 展示最近 6 条",
+                            color = palette.textMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.W400,
+                            fontFamily = NeoMono
+                        )
+                    }
+                    IconCircleButton(
+                        emoji = "🔽",
+                        palette = palette,
+                        size = 30.dp,
+                        contentDescription = "展开小票"
+                    ) { app.toggleReceiptCollapsed() }
+                }
+                Spacer(Modifier.height(12.dp))
+                DashedDivider(palette.textMuted)
+                Spacer(Modifier.height(14.dp))
+            }
+
+            if (app.history.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+                    NeoText("暂无记录", color = palette.textMuted, fontSize = 12.sp, fontWeight = FontWeight.W700)
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    app.history.take(6).forEach { item ->
+                        HistoryEntry(item, palette)
+                    }
+                }
+            }
         }
+        ReceiptActions(app, palette)
     }
 }
 
@@ -237,12 +276,13 @@ private fun ReceiptPanel(
     surfaceBorder: Color,
     contentBg: Color,
     contentColor: Color,
+    minHeight: androidx.compose.ui.unit.Dp = 403.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 403.dp)
+            .heightIn(min = minHeight)
             .drawBehind {
                 val dx = 3.dp.toPx()
                 val dy = 3.dp.toPx()
