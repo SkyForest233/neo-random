@@ -108,6 +108,15 @@ class CoinAnim(private val fx: Fx) {
     }
 
     val isActive: Boolean get() = state != AnimState.IDLE || abs(rx) > 0.5f
+
+    /** 异常中断：复位到可用状态 */
+    fun abort() {
+        state = AnimState.IDLE
+        speed = 0f
+        y = 0f
+        rx = 0f
+        buttonEnabled = true
+    }
 }
 
 data class WheelItem(val text: String, val weight: Int)
@@ -214,4 +223,15 @@ class WheelAnim(private val fx: Fx) {
     var onWheelWinnerAutoRemove: (String) -> Unit = {}
 
     fun baseAngle(): Float = floor(angle / 360f) * 360f
+
+    /** 本次旋转期间使用的选项缓存（避免每帧重新解析正则） */
+    var spinningItems: List<WheelItem> = emptyList()
+
+    /** 异常中断：复位到可用状态 */
+    fun abort() {
+        state = AnimState.IDLE
+        speed = 0f
+        stampVisible = false
+        buttonEnabled = true
+    }
 }

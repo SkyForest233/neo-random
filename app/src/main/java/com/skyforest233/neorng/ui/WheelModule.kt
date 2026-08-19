@@ -347,7 +347,10 @@ private fun WheelSetup(app: AppState, palette: NeoPalette) {
             ) {
                 BasicTextField(
                     value = app.wheelInput,
-                    onValueChange = { app.wheelInput = it },
+                    onValueChange = {
+                        app.wheelInput = it
+                        app.scheduleSave()
+                    },
                     textStyle = TextStyle(
                         color = palette.textMain,
                         fontSize = 15.sp,
@@ -361,7 +364,7 @@ private fun WheelSetup(app: AppState, palette: NeoPalette) {
                         .verticalScroll(scroll)
                         .onFocusChanged { state ->
                             focused = state.isFocused
-                            app.anyInputFocused = state.isFocused
+                            app.onFieldFocus(state.isFocused)
                         }
                 )
             }

@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -60,9 +62,10 @@ fun CoinModule(app: AppState, palette: NeoPalette) {
                     value = app.coinHead,
                     onValueChange = {
                         app.coinHead = it
-                        app.saveData()
+                        app.scheduleSave()
                     },
-                    palette = palette
+                    palette = palette,
+                    onFocusChanged = { app.onFieldFocus(it) }
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -71,9 +74,10 @@ fun CoinModule(app: AppState, palette: NeoPalette) {
                     value = app.coinTail,
                     onValueChange = {
                         app.coinTail = it
-                        app.saveData()
+                        app.scheduleSave()
                     },
-                    palette = palette
+                    palette = palette,
+                    onFocusChanged = { app.onFieldFocus(it) }
                 )
             }
         }
@@ -135,6 +139,7 @@ private fun CoinScene(app: AppState, palette: NeoPalette, modifier: Modifier = M
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { app.executeCoinFlip() }
+            .semantics { contentDescription = "硬币，点按翻转" }
             .graphicsLayer {
                 translationY = coin.y.dp.toPx()
                 rotationX = coin.rx

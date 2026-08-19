@@ -38,6 +38,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -72,12 +74,13 @@ fun NeoSurface(
     shadowDy: Dp = 3.dp,
     shadowEnabled: Boolean = true,
     pressedTranslate: Boolean = false,
+    pressedState: Boolean? = null,
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val active = pressedTranslate && pressed
+    val active = pressedTranslate && (pressedState ?: pressed)
     val reserveEnd = if (shadowEnabled) shadowDx else 0.dp
     val reserveBottom = if (shadowEnabled) shadowDy else 0.dp
 
@@ -173,32 +176,50 @@ fun ActionButton(
     }
 }
 
-/** 头部圆形图标按钮（.icon-btn） */
+/**
+ * 头部圆形图标按钮（.icon-btn）
+ * 无障碍：外层 48dp 触控热区 + contentDescription（视觉尺寸保持不变）
+ */
 @Composable
 fun IconCircleButton(
     emoji: String,
     palette: NeoPalette,
     size: Dp = 36.dp,
     modifier: Modifier = Modifier,
+    contentDescription: String = "",
     onClick: () -> Unit
 ) {
-    NeoSurface(
-        modifier = modifier.size(size + 2.dp),
-        palette = palette,
-        onClick = onClick,
-        bg = palette.card,
-        borderWidth = 2.dp,
-        radius = 100.dp,
-        shadowDx = 2.dp,
-        shadowDy = 2.dp,
-        pressedTranslate = true,
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    Box(
+        modifier
+            .size(48.dp)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .then(
+                if (contentDescription.isNotEmpty()) {
+                    Modifier.semantics { this.contentDescription = emoji + " " + contentDescription }
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.foundation.text.BasicText(
-            text = emoji,
-            style = TextStyle(fontSize = with(androidx.compose.ui.platform.LocalDensity.current) { (size.value * 0.44f).sp }),
-            modifier = Modifier
-        )
+        NeoSurface(
+            modifier = Modifier.size(size + 2.dp),
+            palette = palette,
+            bg = palette.card,
+            borderWidth = 2.dp,
+            radius = 100.dp,
+            shadowDx = 2.dp,
+            shadowDy = 2.dp,
+            pressedTranslate = true,
+            pressedState = pressed,
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.text.BasicText(
+                text = emoji,
+                style = TextStyle(fontSize = with(androidx.compose.ui.platform.LocalDensity.current) { (size.value * 0.44f).sp }),
+                modifier = Modifier
+            )
+        }
     }
 }
 

@@ -8,9 +8,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.cancel
 import com.skyforest233.neorng.ui.MainScreen
 
 class MainActivity : ComponentActivity() {
+
+    private var appState: AppState? = null
+
+    override fun onDestroy() {
+        appState?.scope?.cancel()
+        appState = null
+        super.onDestroy()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +35,7 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val app = remember { AppState(applicationContext) }
+            val app = remember { AppState(applicationContext).also { appState = it } }
             val view = LocalView.current
 
             // 状态栏图标颜色跟随应用内深浅模式

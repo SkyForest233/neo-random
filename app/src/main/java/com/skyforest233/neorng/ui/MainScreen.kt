@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -55,6 +56,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +78,7 @@ import kotlin.math.abs
 fun MainScreen(app: AppState) {
     val palette = paletteFor(app.theme, app.dark)
     val noiseBitmap = rememberNoiseBitmap()
-    var currentTab by remember { mutableIntStateOf(0) }
+    var currentTab by rememberSaveable { mutableIntStateOf(0) }
     val switchTab: (Int) -> Unit = { target ->
         if (target != currentTab && target in 0..2) {
             currentTab = target
@@ -111,7 +114,7 @@ fun MainScreen(app: AppState) {
                 val coinActive = app.coin.isActive
                 val wheelActive = app.wheel.state != AnimState.IDLE
                 if (coinActive || wheelActive) {
-                    val items = if (wheelActive) app.parseWheelItems(app.wheelInput) else emptyList()
+                    val items = if (wheelActive) app.wheel.spinningItems else emptyList()
                     repeat(steps) {
                         if (coinActive) app.coin.stepOnce()
                         if (wheelActive) app.wheel.stepOnce(items)
@@ -220,9 +223,9 @@ private fun Header(app: AppState, palette: NeoPalette) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconCircleButton(emoji = "🎨", palette = palette, size = 30.dp) { app.cycleTheme() }
-            IconCircleButton(emoji = "🌓", palette = palette, size = 30.dp) { app.toggleDarkMode() }
-            IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette, size = 30.dp) { app.toggleMute() }
+            IconCircleButton(emoji = "🎨", palette = palette, size = 30.dp, contentDescription = "切换主题") { app.cycleTheme() }
+            IconCircleButton(emoji = "🌓", palette = palette, size = 30.dp, contentDescription = "切换深浅模式") { app.toggleDarkMode() }
+            IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette, size = 30.dp, contentDescription = "切换静音") { app.toggleMute() }
             ModeBadge(app, palette)
         }
     }
@@ -240,6 +243,7 @@ private fun ModeBadge(app: AppState, palette: NeoPalette, modifier: Modifier = M
         palette = palette,
         onClick = { app.toggleMode() },
         radius = 100.dp,
+        modifier = modifier.semantics { contentDescription = "随机来源：" + (RngEngine.MODE_LABELS[app.rngMode] ?: "") + "，点按切换" },
         borderWidth = 2.5.dp,
         shadowDx = 2.dp,
         shadowDy = 2.dp,

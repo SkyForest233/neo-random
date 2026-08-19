@@ -57,18 +57,20 @@ fun RngModule(app: AppState, palette: NeoPalette) {
                 NeoText("MIN", color = palette.textMain, fontSize = 13.sp, fontWeight = FontWeight.W900)
                 NeoTextField(
                     value = app.rngMin,
-                    onValueChange = { app.rngMin = it; app.saveData() },
+                    onValueChange = { app.rngMin = it; app.scheduleSave() },
                     palette = palette,
-                    numeric = true
+                    numeric = true,
+                    onFocusChanged = { app.onFieldFocus(it) }
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NeoText("MAX", color = palette.textMain, fontSize = 13.sp, fontWeight = FontWeight.W900)
                 NeoTextField(
                     value = app.rngMax,
-                    onValueChange = { app.rngMax = it; app.saveData() },
+                    onValueChange = { app.rngMax = it; app.scheduleSave() },
                     palette = palette,
-                    numeric = true
+                    numeric = true,
+                    onFocusChanged = { app.onFieldFocus(it) }
                 )
             }
         }
@@ -89,9 +91,10 @@ fun RngModule(app: AppState, palette: NeoPalette) {
                 }
                 NeoTextField(
                     value = app.rngCount,
-                    onValueChange = { app.rngCount = it; app.saveData() },
+                    onValueChange = { app.rngCount = it; app.scheduleSave() },
                     palette = palette,
-                    numeric = true
+                    numeric = true,
+                    onFocusChanged = { app.onFieldFocus(it) }
                 )
             }
             Column(Modifier.padding(bottom = 14.dp)) {

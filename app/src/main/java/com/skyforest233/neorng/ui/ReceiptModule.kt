@@ -291,7 +291,8 @@ private fun ReceiptHeader(
                 IconCircleButton(
                     emoji = titleButtonEmoji,
                     palette = palette.copyBg(buttonBg).copyText(buttonTextColor),
-                    size = 36.dp
+                    size = 36.dp,
+                    contentDescription = if (titleButtonEmoji == "📊") "查看数据统计" else "返回记录"
                 ) { onTitleButton() }
             } else {
                 Box(Modifier.size(36.dp))

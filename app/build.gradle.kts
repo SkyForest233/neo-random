@@ -13,12 +13,12 @@ val hasKeystore = ksFile != null && ksFile.exists()
 
 android {
     namespace = "com.skyforest233.neorng"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.skyforest233.neorng"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = (findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
         versionName = (findProperty("VERSION_NAME") as String?) ?: "1.0.0"
     }

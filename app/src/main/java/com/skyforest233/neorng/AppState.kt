@@ -86,6 +86,28 @@ class AppState(private val context: Context) : Fx {
 
     /** 任意文本框聚焦时为 true（键盘空格触发当前模块时需要排除） */
     var anyInputFocused by mutableStateOf(false)
+        private set
+    private var focusCount = 0
+
+    /** 输入框聚焦状态上报（计数式，支持多输入框共存） */
+    fun onFieldFocus(focused: Boolean) {
+        focusCount = (focusCount + if (focused) 1 else -1).coerceAtLeast(0)
+        anyInputFocused = focusCount > 0
+    }
+
+    /** 统一的安全协程入口：异常兜底，避免未捕获异常直接崩溃 */
+    private fun launchSafely(block: suspend () -> Unit) {
+        scope.launch { runCatching { block() } }
+    }
+
+    /** 防抖保存（300ms），高频输入时避免每次按键都全量序列化 JSON */
+    private var saveRunnable: Runnable? = null
+    fun scheduleSave() {
+        saveRunnable?.let { handler.removeCallbacks(it) }
+        val r = Runnable { saveData() }
+        saveRunnable = r
+        handler.postDelayed(r, 300)
+    }
 
     init {
         wheel.onWheelWinnerAutoRemove = { winner -> eliminateItem(winner, showToast = true) }
@@ -328,9 +350,13 @@ class AppState(private val context: Context) : Fx {
         if (coin.state != AnimState.IDLE) return
         vibrateIfEnabled(15)
         coin.beginSpin()
-        scope.launch {
-            val nums = RngEngine.fetch(1, 1000, 1, false, rngMode) { toast(it) } ?: return@launch
-            val n = nums.firstOrNull() ?: return@launch
+        launchSafely {
+            val nums = RngEngine.fetch(1, 1000, 1, false, rngMode) { toast(it) }
+            if (nums == null || nums.isEmpty()) {
+                coin.abort()
+                return@launchSafely
+            }
+            val n = nums.first()
             val resultType = when {
                 n <= 495 -> "heads"
                 n <= 990 -> "tails"
@@ -358,7 +384,7 @@ class AppState(private val context: Context) : Fx {
         vibrateIfEnabled(10)
         rngButtonEnabled = false
         rngResults.clear()
-        scope.launch {
+        launchSafely {
             val nums = RngEngine.fetch(minV, maxV, count, rngUnique, rngMode) { toast(it) }
             if (nums != null) {
                 // 与网页版 setTimeout(idx * 100) 一致的逐个弹出节奏
@@ -384,11 +410,16 @@ class AppState(private val context: Context) : Fx {
         if (wheel.state != AnimState.IDLE || items.isEmpty()) return
         vibrateIfEnabled(20)
         wheel.autoRemoveWinner = wheelAutoRemove
+        wheel.spinningItems = items
         wheel.beginSpin()
-        scope.launch {
+        launchSafely {
             val totalWeight = items.sumOf { it.weight }
-            val nums = RngEngine.fetch(1, totalWeight, 1, false, rngMode) { toast(it) } ?: return@launch
-            val targetWeight = nums.firstOrNull() ?: return@launch
+            val nums = RngEngine.fetch(1, totalWeight, 1, false, rngMode) { toast(it) }
+            if (nums == null || nums.isEmpty()) {
+                wheel.abort()
+                return@launchSafely
+            }
+            val targetWeight = nums.first()
 
             var currentSum = 0
             var winIdx = 0
