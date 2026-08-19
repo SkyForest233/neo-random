@@ -201,31 +201,36 @@ fun MainScreen(app: AppState) {
 
 @Composable
 private fun Header(app: AppState, palette: NeoPalette) {
-    // 单行紧凑式：图标 30dp、间距 8dp、随机源短标签，一行放下（网页版原味）
+    // 单行完整布局：36dp 图标 + 完整随机源名称；标题弹性收缩（极窄屏字号自适应，徽章永不截断）
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 400
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = if (compact) 12.dp else 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.text.BasicText(
             text = "NEO_RNG",
             style = androidx.compose.ui.text.TextStyle(
                 color = palette.textMain,
-                fontSize = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 480) 20.sp else 22.sp,
+                fontSize = if (compact) 20.sp else 22.sp,
                 fontWeight = FontWeight.W900,
                 letterSpacing = (-0.5).sp,
                 fontFamily = NeoSans
-            )
+            ),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconCircleButton(emoji = "🎨", palette = palette, size = 30.dp, contentDescription = "切换主题") { app.cycleTheme() }
-            IconCircleButton(emoji = "🌓", palette = palette, size = 30.dp, contentDescription = "切换深浅模式") { app.toggleDarkMode() }
-            IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette, size = 30.dp, contentDescription = "切换静音") { app.toggleMute() }
+            IconCircleButton(emoji = "🎨", palette = palette, size = 36.dp, contentDescription = "切换主题") { app.cycleTheme() }
+            IconCircleButton(emoji = "🌓", palette = palette, size = 36.dp, contentDescription = "切换深浅模式") { app.toggleDarkMode() }
+            IconCircleButton(emoji = if (app.muted) "🔕" else "🔔", palette = palette, size = 36.dp, contentDescription = "切换静音") { app.toggleMute() }
             ModeBadge(app, palette)
         }
     }
@@ -237,6 +242,7 @@ private fun ModeBadge(app: AppState, palette: NeoPalette, modifier: Modifier = M
     val dotColor = when (app.rngMode) {
         "randomorg" -> palette.accent
         "drand" -> palette.accentSub
+        "hybrid" -> palette.textMain
         else -> palette.grayLight
     }
     NeoSurface(
@@ -262,9 +268,9 @@ private fun ModeBadge(app: AppState, palette: NeoPalette, modifier: Modifier = M
                     .border(2.dp, palette.border, CircleShape)
             )
             NeoText(
-                RngEngine.MODE_LABELS_SHORT[app.rngMode] ?: "LOCAL",
+                RngEngine.MODE_LABELS[app.rngMode] ?: "LOCAL RNG",
                 color = palette.textMain,
-                fontSize = 11.sp,
+                fontSize = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 400) 11.sp else 12.sp,
                 fontWeight = FontWeight.W700
             )
         }
