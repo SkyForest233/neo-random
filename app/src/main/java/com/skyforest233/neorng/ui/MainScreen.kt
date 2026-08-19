@@ -381,7 +381,8 @@ private fun TabButton(
             radius = 100.dp,
             shadowEnabled = active,
             shadowDx = 2.dp,
-            shadowDy = 2.dp
+            shadowDy = 2.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Box(Modifier.padding(horizontal = 8.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 NeoText(

@@ -1,5 +1,6 @@
 package com.skyforest233.neorng.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -32,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -57,27 +60,71 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    Column(Modifier.fillMaxWidth()) {
-        Box {
-            ReceiptCard(app, palette)
+    // 折叠/展开带平滑尺寸动画
+    Column(Modifier.fillMaxWidth().animateContentSize()) {
+        if (app.receiptCollapsed) {
+            CollapsedReceiptBar(app, palette)
+        } else {
+            Box {
+                ReceiptCard(app, palette)
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 15.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                GhostButton(
+                    text = "📤 分享小票",
+                    palette = palette,
+                    modifier = Modifier.weight(1f)
+                ) { app.shareReceipt() }
+                GhostButton(
+                    text = "🗑 撕毁清空",
+                    palette = palette,
+                    color = EdgeRed,
+                    modifier = Modifier.weight(1f)
+                ) { app.tearReceipt() }
+            }
         }
+    }
+}
+
+/** 折叠态：紧凑摘要栏（🧾 + 记录数 + 展开箭头），整条可点 */
+@Composable
+private fun CollapsedReceiptBar(app: AppState, palette: NeoPalette) {
+    NeoSurface(
+        palette = palette,
+        onClick = { app.toggleReceiptCollapsed() },
+        radius = 12.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "小票已折叠，共" + app.history.size + "条记录，点按展开" }
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(top = 15.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            GhostButton(
-                text = "📤 分享小票",
-                palette = palette,
-                modifier = Modifier.weight(1f)
-            ) { app.shareReceipt() }
-            GhostButton(
-                text = "🗑 撕毁清空",
-                palette = palette,
-                color = EdgeRed,
-                modifier = Modifier.weight(1f)
-            ) { app.tearReceipt() }
+            NeoText("🧾", color = palette.textMain, fontSize = 20.sp, fontWeight = FontWeight.W400)
+            NeoText(
+                "RNG RECORD",
+                color = palette.textMain,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.W900,
+                letterSpacing = 1.sp
+            )
+            Box(Modifier.weight(1f))
+            NeoText(
+                app.history.size.toString() + " 条",
+                color = palette.textMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.W700,
+                fontFamily = NeoMono
+            )
+            NeoText("🔽", color = palette.textMuted, fontSize = 14.sp, fontWeight = FontWeight.W400)
         }
     }
 }
@@ -271,7 +318,12 @@ private fun ReceiptHeader(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            Box(Modifier.size(36.dp))
+            IconCircleButton(
+                emoji = "🔼",
+                palette = palette,
+                size = 30.dp,
+                contentDescription = "折叠小票"
+            ) { app.toggleReceiptCollapsed() }
             Column(
                 Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally

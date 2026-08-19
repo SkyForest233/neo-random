@@ -277,6 +277,15 @@ class AppState(private val context: Context) : Fx {
 
     var receiptFlipped by mutableStateOf(false)
 
+    var receiptCollapsed by mutableStateOf(prefs.getString("neoReceiptCollapsed", "false") == "true")
+        private set
+
+    fun toggleReceiptCollapsed() {
+        receiptCollapsed = !receiptCollapsed
+        if (receiptCollapsed) receiptFlipped = false
+        prefs.edit().putString("neoReceiptCollapsed", receiptCollapsed.toString()).apply()
+    }
+
     fun flipReceipt(toBack: Boolean) {
         vibrateIfEnabled(10)
         sound("swoosh")
