@@ -63,17 +63,19 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    // 折叠/展开过渡：打印机式纵向滑动 —— 旧小票向上滑出、新小票从下方滑入，
-    // 容器高度同步平滑动画（SizeTransform），全程无透明度（边框无伪影）
+    // 折叠/展开过渡：手风琴式 —— 进入面板从顶边向下摊开（展开感），
+    // 退出面板向顶边收拢（折叠感）；退出快进入慢，容器高度同步平滑动画
     Box(Modifier.fillMaxWidth().clipToBounds()) {
         androidx.compose.animation.AnimatedContent(
             targetState = app.receiptCollapsed,
             transitionSpec = {
-                androidx.compose.animation.slideInVertically(
-                    tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                ) { it } togetherWith androidx.compose.animation.slideOutVertically(
-                    tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                ) { -it }
+                androidx.compose.animation.expandVertically(
+                    animationSpec = tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    expandFrom = Alignment.Top
+                ) togetherWith androidx.compose.animation.shrinkVertically(
+                    animationSpec = tween(160, easing = androidx.compose.animation.core.FastOutLinearInEasing),
+                    shrinkTowards = Alignment.Top
+                )
             },
             label = "receiptCollapse"
         ) { collapsed ->
