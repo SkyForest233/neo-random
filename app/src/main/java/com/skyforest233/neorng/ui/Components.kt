@@ -193,7 +193,7 @@ fun IconCircleButton(
     val pressed by interaction.collectIsPressedAsState()
     Box(
         modifier
-            .size(48.dp)
+            .size(size)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .then(
                 if (contentDescription.isNotEmpty()) {
@@ -203,7 +203,7 @@ fun IconCircleButton(
         contentAlignment = Alignment.Center
     ) {
         NeoSurface(
-            modifier = Modifier.size(size + 2.dp),
+            modifier = Modifier.size(size),
             palette = palette,
             bg = palette.card,
             borderWidth = 2.dp,

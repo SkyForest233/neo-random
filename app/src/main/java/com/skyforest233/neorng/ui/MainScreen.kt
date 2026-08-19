@@ -225,7 +225,7 @@ private fun Header(app: AppState, palette: NeoPalette) {
                 .padding(end = 8.dp)
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconCircleButton(emoji = "🎨", palette = palette, size = 36.dp, contentDescription = "切换主题") { app.cycleTheme() }
