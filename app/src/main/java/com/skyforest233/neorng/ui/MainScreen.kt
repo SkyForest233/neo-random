@@ -320,10 +320,11 @@ private fun MainContent(
                 androidx.compose.animation.AnimatedContent(
                     targetState = currentTab,
                     transitionSpec = {
+                        // 全程位移：进出页面如翻页般完全错开，无残留重叠
                         val dir = if (targetState > initialState) 1 else -1
                         (
-                            androidx.compose.animation.slideInHorizontally(tween(280, easing = ease)) { dir * it / 3 } togetherWith
-                                androidx.compose.animation.slideOutHorizontally(tween(280, easing = ease)) { -dir * it / 3 }
+                            androidx.compose.animation.slideInHorizontally(tween(300, easing = ease)) { dir * it } togetherWith
+                                androidx.compose.animation.slideOutHorizontally(tween(300, easing = ease)) { -dir * it }
                             )
                     },
                     label = "tabContent"

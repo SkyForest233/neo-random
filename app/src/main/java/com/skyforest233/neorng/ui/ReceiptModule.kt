@@ -1,6 +1,9 @@
 package com.skyforest233.neorng.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.Canvas
@@ -31,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -59,30 +63,26 @@ private val EdgeRed = Color(0xFFFF3366)
  */
 @Composable
 fun ReceiptModule(app: AppState, palette: NeoPalette) {
-    // 折叠/展开：AnimatedContent + SizeTransform(clip) —— 容器高度平滑动画 + 裁剪揭示，
-    // 内容瞬时替换（无透明度动画 → 边框无伪影，无双面板叠高 → 无跳变）
-    Column(Modifier.fillMaxWidth()) {
-        androidx.compose.animation.AnimatedContent(
-            targetState = app.receiptCollapsed,
-            transitionSpec = {
-                androidx.compose.animation.ContentTransform(
-                    androidx.compose.animation.EnterTransition.None,
-                    androidx.compose.animation.ExitTransition.None,
-                    sizeTransform = androidx.compose.animation.SizeTransform(clip = true)
+    // 折叠/展开：animateContentSize + clipToBounds（compose-animations skill 推荐的最小 API）
+    // —— 高度无弹跳弹簧动画，内容裁剪揭示，无透明度动画（边框无伪影）
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clipToBounds()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBounciness,
+                    stiffness = Spring.StiffnessMediumLow
                 )
-            },
-            label = "receiptCollapse"
-        ) { collapsed ->
-            if (collapsed) {
-                CollapsedReceipt(app, palette)
-            } else {
-                Column {
-                    Box {
-                        ReceiptCard(app, palette)
-                    }
-                    ReceiptActions(app, palette)
-                }
+            )
+    ) {
+        if (app.receiptCollapsed) {
+            CollapsedReceipt(app, palette)
+        } else {
+            Box {
+                ReceiptCard(app, palette)
             }
+            ReceiptActions(app, palette)
         }
     }
 }
